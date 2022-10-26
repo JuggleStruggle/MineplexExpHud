@@ -34,7 +34,7 @@ out from making the editing line's highlight be red.
 - Rather than use `%<number>$s` (which specifically targets which format index to use and is the preferred method),
   you could instead use `%s` to do an incremental formatting (just keep in mind that all of the lines you're dealing
   with are all parsed at once as the mod connects your multi-line texts into a single line which is why the numeric 
-  route is better-suited to avoid confusion. You'll see this as you experiment around with your multi-line strings.
+  route is better-suited to avoid confusion. You'll see this as you experiment around with your multi-line strings.)
 
 ### Examples:
 `EXP: %1$s/%2$s | Progress: %5$s` results in `EXP: 11111/50000 | Progress: 22.22%` <br>
