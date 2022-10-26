@@ -1,0 +1,16 @@
+[
+    {
+        "modid": "mineplexexphud",
+        "name": "JuggleStruggle's Mineplex EXP HUD Mod",
+        "description": "Tired of tracking your progress by /xp? Now let this mod do the job for you!",
+        "version": "${version}",
+        "mcversion": "${mcversion}",
+        "url": "https://github.com/JuggleStruggle/MineplexExpHud",
+        "updateUrl": "",
+        "authorList": ["JuggleStruggle"],
+        "credits": "A cat. Nobody else other than a cat. UwU",
+        "logoFile": "assets/mineplexexphud/icon.png",
+        "screenshots": [""],
+        "dependencies": []
+    }
+]
