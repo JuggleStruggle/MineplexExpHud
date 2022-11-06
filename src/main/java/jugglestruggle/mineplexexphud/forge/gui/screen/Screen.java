@@ -1,3 +1,23 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.gui.screen;
 
 import com.google.common.collect.ImmutableList;
@@ -35,7 +55,7 @@ public abstract class Screen extends GuiScreen
                 wl.drawScreen(mouseX, mouseY, delta);
                 
                 if (tooltipLines == null)
-                    tooltipLines = wl.getTooltipLines(mouseX, mouseY);
+                    tooltipLines = wl.getTooltipLines(mouseX, mouseY, true);
             }
     
         super.drawScreen(mouseX, mouseY, delta);
@@ -134,5 +154,7 @@ public abstract class Screen extends GuiScreen
             w.tick();
     }
     
-    protected abstract boolean onEscapeKeyLeaves();
+    protected boolean onEscapeKeyLeaves() {
+        return true;
+    }
 }

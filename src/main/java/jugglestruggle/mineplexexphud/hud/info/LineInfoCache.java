@@ -1,3 +1,23 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.hud.info;
 
 public class LineInfoCache
@@ -22,6 +42,9 @@ public class LineInfoCache
         this.text = c.text;
         this.textWidth = c.textWidth;
         
+        this.textX = c.textX;
+        this.textY = c.textY;
+        
         this.left = c.left;
         this.top = c.top;
         this.right = c.right;
@@ -31,18 +54,10 @@ public class LineInfoCache
     public LineInfoCache copy() {
         return new LineInfoCache(this);
     }
-        
-        /*
-        public void setBox(RectangleF posBox)
-        {
-            this.left = posBox.getX();
-            this.top = posBox.getY();
-            this.right = posBox.getW();
-            this.bottom = posBox.getH();
-        }
-         */
+    
     /**
-     * @param f a six-array float representing... what?
+     * @param f a six-array float representing the text position and
+     *          the positions of the rectangle that will be used on render
      */
     public void setPosAndBoxPos(float[] f)
     {

@@ -29,12 +29,17 @@ formatting line, `You have %1$s EXP`.
 As this uses Java's String formatting, you will have to learn how to apply formatting in a way the mod does not error
 out from making the editing line's highlight be red.
 
+### Color Formatting (introduced in v0.1.0)
+- To format the text you're dealing with, use `&<color>`.
+  - This behaves the same way as it would by using `§<color>` from the vanilla game.
+
 ### Some small tips: 
 - To show a simple percent `%` while avoiding an error, use `%%`.
 - Rather than use `%<number>$s` (which specifically targets which format index to use and is the preferred method),
   you could instead use `%s` to do an incremental formatting (just keep in mind that all of the lines you're dealing
   with are all parsed at once as the mod connects your multi-line texts into a single line which is why the numeric 
-  route is better-suited to avoid confusion. You'll see this as you experiment around with your multi-line strings.)
+  route is better-suited to avoid confusion. You'll see this as you experiment around with your multi-line strings).
+- To show `&<color>` in the end result, just perform `&&<color>`.
 
 ### Examples:
 `EXP: %1$s/%2$s | Progress: %5$s` results in `EXP: 11111/50000 | Progress: 22.22%` <br>

@@ -1,5 +1,26 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.gui.widget;
 
+import jugglestruggle.mineplexexphud.forge.MineplexExpHudClientForge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.gui.GuiButton;
@@ -25,6 +46,20 @@ public class ButtonWidget extends GuiButton implements Widget
     public byte positioning;
     
     String[] tooltipText;
+    
+    public int textColor = 0xFFFFFF;
+    public int hoveredTextColor = 16777120;
+    public int disabledTextColor = 10526880;
+    public boolean drawTextWithShadow = true;
+    
+    public int backColor = 0xFF707070;
+    public int hoveredBackColor = 0xFF7E88BF;
+    public int disabledBackColor = 0xFF2C2C2C;
+    public boolean renderWithTextures = true;
+    
+    public int borderColor = 0xFF000000;
+    public int hoveredBorderColor = 0xFFFFFFFF;
+    public int disabledBorderColor = 0xFF000000;
     
     protected ButtonWidget(int w, int h, String buttonText) {
         this(w, h, buttonText, null);
@@ -128,12 +163,10 @@ public class ButtonWidget extends GuiButton implements Widget
     public void setInteractable(boolean enabled) {
         super.enabled = enabled;
     }
-    
     @Override
     public void setVisibleToUser(boolean visible) {
         super.visible = visible;
     }
-    
     @Override
     public void setAttentionGiven(boolean focused) {}
     
@@ -160,23 +193,51 @@ public class ButtonWidget extends GuiButton implements Widget
         if (!this.visible)
             return;
     
-        mc.getTextureManager().bindTexture(buttonTextures);
-    
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
     
         this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition &&
                 mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
     
-        int i = this.getHoverState(this.hovered);
+        int hoverState = this.getHoverState(this.hovered);
     
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.blendFunc(770, 771);
-        
-        this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 46 + i * 20, this.width / 2, this.height);
-        this.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2, 46 + i * 20, this.width / 2, this.height);
     
-        this.mouseDragged(mc, mouseX, mouseY);
+        if (this.renderWithTextures)
+        {
+            mc.getTextureManager().bindTexture(buttonTextures);
+            
+            super.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 46 + hoverState * 20, this.width / 2, this.height);
+            super.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2, 46 + hoverState * 20, this.width / 2, this.height);
+        }
+        else
+        {
+            int backColor;
+            int borderColor;
+            
+            if (this.enabled)
+            {
+                backColor = this.hovered ? this.hoveredBackColor : this.backColor;
+                borderColor = this.hovered ? this.hoveredBorderColor : this.borderColor;
+            }
+            else
+            {
+                backColor = this.disabledBackColor;
+                borderColor = this.disabledBorderColor;
+            }
+            
+            MineplexExpHudClientForge.getCtx().fillWithWireframe
+            (
+                this.xPosition + 1, this.yPosition + 1,
+                this.xPosition + this.width - 1,
+                this.yPosition + this.height - 1,
+                
+                backColor, borderColor
+            );
+        }
+    
+        super.mouseDragged(mc, mouseX, mouseY);
         
         this.drawBeforeText(mc, mouseX, mouseY);
     
@@ -185,14 +246,15 @@ public class ButtonWidget extends GuiButton implements Widget
         
         int textColor;
     
-        if (this.packedFGColour != 0)
-            textColor = this.packedFGColour;
-        else if (!this.enabled)
-            textColor = 10526880;
-        else if (this.hovered)
-            textColor = 16777120;
+        if (super.packedFGColour == 0)
+        {
+            if (this.enabled)
+                textColor = this.hovered ? this.hoveredTextColor : this.textColor;
+            else
+                textColor = this.disabledTextColor;
+        }
         else
-            textColor = 14737632;
+            textColor = this.packedFGColour;
     
         final int textWidth = mc.fontRendererObj.getStringWidth(this.displayString);
         final int startingX = this.xPosition + this.xOffsetText;
@@ -209,7 +271,7 @@ public class ButtonWidget extends GuiButton implements Widget
                 (
                     this.displayString,
                     startingX + (this.width / 2) - (textWidth / 2),
-                    startingY, textColor, true
+                    startingY, textColor, this.drawTextWithShadow
                 );
     
                 break;
@@ -221,7 +283,7 @@ public class ButtonWidget extends GuiButton implements Widget
                 (
                     this.displayString,
                     startingX + 4, startingY,
-                    textColor, true
+                    textColor, this.drawTextWithShadow
                 );
     
                 break;
@@ -233,7 +295,7 @@ public class ButtonWidget extends GuiButton implements Widget
                 (
                     this.displayString,
                     startingX + this.width - (textWidth + 4),
-                    startingY, textColor, true
+                    startingY, textColor, this.drawTextWithShadow
                 );
     
                 break;

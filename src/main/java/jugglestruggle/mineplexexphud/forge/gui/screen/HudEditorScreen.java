@@ -1,3 +1,23 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.gui.screen;
 
 import jugglestruggle.mineplexexphud.forge.ForgeExpHud;
@@ -67,11 +87,6 @@ public class HudEditorScreen extends Screen
     }
     
     @Override
-    protected boolean onEscapeKeyLeaves() {
-        return true;
-    }
-    
-    @Override
     protected void mouseClicked(int mouseX, int mouseY, int button)
     {
         ForgeExpHud hud = MineplexExpHudClientForge.getForgeExpHud();
@@ -117,14 +132,6 @@ public class HudEditorScreen extends Screen
     
         ForgeExpHud hud = MineplexExpHudClientForge.getForgeExpHud();
         
-        MineplexExpHudClientForge.getCtx().fill
-        (
-            hud.getX(), hud.getY(),
-            hud.getX() + hud.getWidth(),
-            hud.getY() + hud.getHeight(),
-            0xDDFFAA55
-        );
-        
         if (this.draggingHud)
         {
             float newX = (float)mouseX + this.xOffsetFromMouseStart;
@@ -138,9 +145,18 @@ public class HudEditorScreen extends Screen
             if (newY + hud.getHeight() > this.height)
                 newY = this.height - hud.getHeight();
     
-            if (hud.getX() != newX || hud.getY() != newY) {
+            if (hud.getX() != newX || hud.getY() != newY)
                 hud.setPos(newX, newY, true);
-            }
+        }
+        else
+        {
+            MineplexExpHudClientForge.getCtx().fill
+            (
+                hud.getX(), hud.getY(),
+                hud.getX() + hud.getWidth(),
+                hud.getY() + hud.getHeight(),
+                0xDDFFAA55
+            );
         }
         
         super.drawScreen(mouseX, mouseY, delta);
@@ -248,8 +264,6 @@ public class HudEditorScreen extends Screen
             Preferences.yOffsetScreenPercentage = -1.0f;
         else if (Preferences.yOffsetScreenPercentage > 1.0f)
             Preferences.yOffsetScreenPercentage = 1.0f;
-//        System.out.printf("xoffset: %1$s | yoffset: %2$s\n",
-//                Preferences.xOffsetScreenPercentage, Preferences.yOffsetScreenPercentage);
     }
     
     static class DraggableMenuWidget extends AbstractMultiWidget
@@ -387,12 +401,17 @@ public class HudEditorScreen extends Screen
     
         private boolean onScreenPositioningUpdate(CyclingButtonWidget<HudPositioning> b, HudPositioning v)
         {
-            Preferences.hudScreenPositioning = v;
+            boolean applyAndChange = !Screen.isCtrlKeyDown();
+            
+            if (applyAndChange)
+                Preferences.hudScreenPositioning = v;
+    
             Preferences.xOffsetScreenPercentage = 0.0f;
             Preferences.yOffsetScreenPercentage = 0.0f;
+            
             MineplexExpHudClientForge.getForgeExpHud().setPositionByScreenArea();
             
-            return true;
+            return applyAndChange;
         }
     
         private boolean onTextPositioningUpdate(CyclingButtonWidget<HudPositioning> b, HudPositioning v)

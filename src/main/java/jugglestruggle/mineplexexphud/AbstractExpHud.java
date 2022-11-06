@@ -1,3 +1,23 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud;
 
 import jugglestruggle.mineplexexphud.hud.RenderContext;
@@ -93,10 +113,16 @@ public abstract class AbstractExpHud
      */
     long totalExpAccumulatedFromLevelCache;
     /**
+     * A version that adds {@link #totalExpAccumulatedFromLevelCache} with the
+     * {@linkplain ExpCacheState#currentExp current exp} to help determine the total count.
+     */
+    long totalExpAccumulated;
+    /**
      * This field is only a percentage by dividing {@linkplain #totalExpAccumulatedFromLevelCache
-     * the total user's exp} + {@linkplain ExpCacheState#currentExp the current EXP} over
-     * {@linkplain ExpStatics#LEVEL_100_TOTAL_EXP all levels' EXP combined} (which is a constant, to avoid
-     * future problems).
+     * the total user's exp} + {@linkplain ExpCacheState#currentExp the current EXP} (see
+     * {@link #totalExpAccumulated} as it is used instead) over
+     * {@linkplain ExpStatics#LEVEL_100_TOTAL_EXP all levels' EXP combined} (which is a constant,
+     * to avoid future problems).
      */
     protected float percentageUntilLevelOneHundred;
     
@@ -157,6 +183,7 @@ public abstract class AbstractExpHud
 
     public DecimalFormat secondsFormat;
     public DecimalFormat progressPercentageFormat;
+    public DecimalFormat progressTo100PercentageFormat;
     
     
     protected float xPosition;
@@ -179,6 +206,7 @@ public abstract class AbstractExpHud
     {
         this.secondsFormat = new DecimalFormat(Preferences.secondsFormat);
         this.progressPercentageFormat = new DecimalFormat(Preferences.progressPercentageFormat);
+        this.progressTo100PercentageFormat = new DecimalFormat(Preferences.progressTo100PercentageFormat);
     
         // TODO: Account for maxPrevExpCaches difference and keep existing prevExpStatuses that can fit in this new entry
         // TODO: None of this matters at the moment as that preference is not exposed yet
@@ -219,33 +247,35 @@ public abstract class AbstractExpHud
     {
         if (this.lines == null)
             this.updateDisplayCacheInfo();
-    
+        
+        this.render(this.lines, ctx, delta);
+    }
+    // Separated method to allow DisplayFormatPreferencesScreen and HudEdgesEditorScreen
+    // to render its previews
+    public void render(LineInfoCache[] lines, RenderContext ctx, float delta)
+    {
         boolean higherThan0 = this.percentageUntilNextLevel > 0.0f;
         boolean lowerThan1  = this.percentageUntilNextLevel < 1.0f;
         
-        for (int i = 0; i < this.lines.length; ++i)
+        ctx.glColor(1.0F, 1.0F, 1.0F, 1.0F);
+    
+        for (int i = 0; i < lines.length; ++i)
         {
-            LineInfoCache line = this.lines[i];
+            LineInfoCache line = lines[i];
     
             if (i == Preferences.lineToShowProgress)
             {
                 float w = line.right - line.left + 2.0f;
-            
+    
                 final int top = (int)line.top - 1;
                 final int height = (int)(line.bottom - line.top) + 2;
                 final int wInt = (int)(w * this.percentageUntilNextLevel);
-            
+    
                 if (higherThan0)
                 {
                     if (lowerThan1)
-                    {
-                        ctx.createScissor
-                        (
-                            (int)line.left - 1, top,
-                            wInt, height
-                        );
-                    }
-                
+                        ctx.createScissor((int)line.left - 1, top, wInt, height);
+    
                     this.renderOnlyTextBackgroundS
                     (
                         ctx, delta, 1.0f,
@@ -254,23 +284,17 @@ public abstract class AbstractExpHud
                         line.right, line.bottom,
                         
                         Preferences.progressBackgroundColor,
-                        Preferences.progressBorderColor
+                        Preferences.showBorders ? Preferences.progressBorderColor : 0
                     );
-                
+    
                     if (lowerThan1)
                         ctx.removeScissor();
                 }
                 if (lowerThan1)
                 {
                     if (higherThan0)
-                    {
-                        ctx.createScissor
-                        (
-                            (int)line.left - 1 + wInt, top,
-                            (int)w - wInt, height
-                        );
-                    }
-                
+                        ctx.createScissor((int)line.left - 1 + wInt, top,(int)w - wInt, height);
+    
                     this.renderOnlyTextBackgroundS
                     (
                         ctx, delta, 1.0f,
@@ -279,9 +303,9 @@ public abstract class AbstractExpHud
                         line.right, line.bottom,
                         
                         Preferences.backgroundColor,
-                        Preferences.borderColor
+                        Preferences.showBorders ? Preferences.borderColor : 0
                     );
-                
+    
                     if (higherThan0)
                         ctx.removeScissor();
                 }
@@ -296,12 +320,15 @@ public abstract class AbstractExpHud
                     line.right, line.bottom,
         
                     Preferences.backgroundColor,
-                    Preferences.borderColor
+                    Preferences.showBorders ? Preferences.borderColor : 0
                 );
             }
-        
+    
             this.renderOnlyTextS(ctx, delta, line.text, 1.0f, line.textX, line.textY, Preferences.textColor);
         }
+    
+        ctx.glColor(1.0f, 1.0f, 1.0f, 1.0f);
+        ctx.enableTexture();
     }
     
     public void tick()
@@ -316,41 +343,43 @@ public abstract class AbstractExpHud
             this.endPerformingExpUpdate(false);
         }
     
-        switch (Preferences.updateMethod)
+        if (Preferences.expUpdateEnabled)
         {
-            case ON_WORLD_CHANGE:
+            switch (Preferences.updateMethod)
             {
-                if (Preferences.worldChangeUseDelays && this.worldChangeInitiatedDelay && this.activeMillisUntilNextExpUpdate <= sysTime) {
-                    this.performExpUpdate();
-                }
-            
-                break;
-            }
-            case UNTIL_NEXT_MS_UPDATE:
-            {
-                if (Preferences.expUpdateEnabled && this.activeMillisUntilNextExpUpdate <= sysTime)
+                case ON_WORLD_CHANGE:
                 {
-                    this.delayActiveMillisUntilNextExpUpdate();
-                    this.performExpUpdate();
-                }
+                    if (Preferences.worldChangeUseDelays && this.worldChangeInitiatedDelay && this.activeMillisUntilNextExpUpdate <= sysTime) {
+                        this.performExpUpdate();
+                    }
             
-                break;
+                    break;
+                }
+                case UNTIL_NEXT_MS_UPDATE:
+                {
+                    if (this.activeMillisUntilNextExpUpdate <= sysTime)
+                    {
+                        this.delayActiveMillisUntilNextExpUpdate();
+                        this.performExpUpdate();
+                    }
+            
+                    break;
+                }
+                default:
+                    break;
             }
-            default:
-                break;
+    
+            if (this.millisRemainingUntilNextSetTimeClear <= sysTime)
+            {
+                this.millisRemainingUntilNextSetTimeClear = sysTime + Preferences.expLevelGainedInSetTime.getResult();
+    
+                this.totalExpGainedInSetTime = 0L;
+                this.totalLevelsGainedInSetTime = 0;
+            }
         }
     
-        if (this.millisRemainingUntilNextSetTimeClear <= sysTime)
-        {
-            this.millisRemainingUntilNextSetTimeClear = sysTime + Preferences.expLevelGainedInSetTime.getResult();
-        
-            this.totalExpGainedInSetTime = 0L;
-            this.totalLevelsGainedInSetTime = 0;
-        }
-    
-        if (Preferences.updateMethod.requiresConstantTextCacheUpdate(this)) {
+        if (Preferences.updateMethod.requiresConstantTextCacheUpdate(this))
             this.updateDisplayCacheInfo();
-        }
     }
     
     // Returns: Whether the chat received event should be cancelled
@@ -406,21 +435,20 @@ public abstract class AbstractExpHud
                         this.currentLine = 1;
                     else if (matchFound = this.findAndMatch(4, unformatted))
                     {
-                        if (this.currentLine == 1) {
+                        if (this.currentLine == 1)
                             this.endPerformingExpUpdate(true);
-                        }
                     }
     
                     if (matchFound)
                         return false;
-                    
-                    break;
+                    else
+                        break;
                 }
             }
         }
         
         
-        if (Preferences.expTotalsCacheMethodCheck != ExpTotalsCacheMethodCheck.LISTEN_TO_CHAT_MESSAGE)
+        if (!Preferences.expUpdateEnabled || Preferences.expTotalsCacheMethodCheck != ExpTotalsCacheMethodCheck.LISTEN_TO_CHAT_MESSAGE)
             return false;
         
         // Find any sign of game results (or EXP pattern matching for that matter)
@@ -622,7 +650,6 @@ public abstract class AbstractExpHud
                         if (m.groupCount() == 1)
                         {
                             this.expStatusOnWatch.currentLevel = Integer.parseInt(m.group(1));
-//                            this.expStatus.currentLevel = Integer.parseInt(m.group(1));
                             
                             this.updatePrevExp_OnlyOnWhatMatters(false);
                         }
@@ -636,9 +663,6 @@ public abstract class AbstractExpHud
                             this.expStatusOnWatch.currentExp = Long.parseLong(m.group(1));
                             this.expStatusOnWatch.expUntilNextLevel = Long.parseLong(m.group(2));
                             this.expStatusOnWatch.nextLevel = Integer.parseInt(m.group(3));
-//                            this.expStatus.currentExp = Long.parseLong(m.group(1));
-//                            this.expStatus.expUntilNextLevel = Long.parseLong(m.group(2));
-//                            this.expStatus.nextLevel = Integer.parseInt(m.group(3));
                             
                             this.updatePrevExp_OnlyOnWhatMatters(true);
                         }
@@ -734,6 +758,9 @@ public abstract class AbstractExpHud
         else
             this.percentageUntilNextLevel = 0.0f;
         
+        // While at it, also update Road to Level 100's status as well
+        this.updateTotalExpAccumulated();
+        
         if (this.cachedFormatToUse == null)
         {
             if (this.attemptDisplayFormatting(Preferences.displayFormatting)) {
@@ -802,7 +829,8 @@ public abstract class AbstractExpHud
                 this.totalLevelsGainedInSession, this.totalExpGainedInSession,
                 this.totalLevelsGainedInSetTime, this.totalExpGainedInSetTime,
                 
-                this.totalExpAccumulatedFromLevelCache, this.percentageUntilLevelOneHundred
+                this.totalExpAccumulated,
+                this.progressTo100PercentageFormat.format(this.percentageUntilLevelOneHundred)
             );
             
             final String[] lines;
@@ -847,7 +875,10 @@ public abstract class AbstractExpHud
         }
     }
     
-    String getExpLevelGainedSetTimeRemainingTimer()
+    public final String getCachedFormatToUse() {
+        return this.cachedFormatToUse;
+    }
+    public String getExpLevelGainedSetTimeRemainingTimer()
     {
         long r = this.millisRemainingUntilNextSetTimeClear - System.currentTimeMillis();
         
@@ -879,7 +910,10 @@ public abstract class AbstractExpHud
                 line.textWidth,
                 this.getTextRendererHeight(),
                 
-                i, size, true
+                Preferences.leftBackgroundEdge, Preferences.topBackgroundEdge,
+                Preferences.rightBackgroundEdge, Preferences.bottomBackgroundEdge,
+                
+                i, size, Preferences.showBorders
             ));
         }
     }
@@ -894,7 +928,6 @@ public abstract class AbstractExpHud
             return;
         
         int txAlpha = ColorUtility.blendAndGetByteAlpha(alpha, (textColor >> 24) & 255);
-    
     
         if (txAlpha > 3)
         {
@@ -913,12 +946,8 @@ public abstract class AbstractExpHud
         if (alpha <= 0.0f)
             return;
         
-        
         int bgAlpha = ColorUtility.blendAndGetByteAlpha(alpha, (bgColor >> 24) & 255);
         int boAlpha = ColorUtility.blendAndGetByteAlpha(alpha, (boColor >> 24) & 255);
-        
-//        ctx.disableTexture();
-//        ctx.enableBlend();
         
         if (bgAlpha > 0)
         {
@@ -936,9 +965,6 @@ public abstract class AbstractExpHud
                 (boAlpha << 24) | (boColor & 0xFFFFFF)
             );
         }
-        
-//        ctx.enableTexture();
-//        ctx.disableBlend();
     }
     
     /**
@@ -970,13 +996,16 @@ public abstract class AbstractExpHud
      */
     protected static float[] getTextAndBgBoxPos(float xPosition, float yPosition, float wSize, float hSize,
                                                 float xOffset, float yOffset, float sWidth, float sHeight,
+                                                float leftEdgeAdd, float topEdgeAdd, float rightEdgeAdd, float bottomEdgeAdd,
                                          int lineAlike, int assumingLineCount, boolean accountForBorders)
     {
         float x = xPosition + xOffset;
         float y = yPosition + yOffset;
         
-        final float xAdd = 6.0f;
-        final float yAdd = 3.0f;
+        // final float xAdd = leftEdgeAdd + rightEdgeAdd;
+        // final float yAdd = topEdgeAdd + bottomEdgeAdd;
+        // final float xAdd = 6.0f;
+        // final float yAdd = 3.0f;
         final float bAdd = accountForBorders ? 1.0f : 0.0f;
         
         if (Preferences.hudTextPositioning == null)
@@ -1003,7 +1032,8 @@ public abstract class AbstractExpHud
                 case TopLeft:
                 case BottomLeft:
                 {
-                    x += xAdd + bAdd;
+                    // x += xAdd + bAdd;
+                    x += leftEdgeAdd + bAdd;
                     
                     break;
                 }
@@ -1012,7 +1042,8 @@ public abstract class AbstractExpHud
                 case TopRight:
                 case BottomRight:
                 {
-                    x += wSize - (sWidth + xAdd + bAdd);
+                    // x += wSize - (sWidth + xAdd + bAdd);
+                    x += wSize - (sWidth + rightEdgeAdd + bAdd);
                     
                     break;
                 }
@@ -1021,7 +1052,8 @@ public abstract class AbstractExpHud
                     break;
             }
             
-            final float lhb = sHeight + ((yAdd * 2.0f) - 1.0f) + (bAdd * 2.0f); // also known as LineHeightBox
+            // final float lhb = sHeight + ((yAdd * 2.0f) - 1.0f) + (bAdd * 2.0f); // also known as LineHeightBox
+            final float lhb = sHeight + (topEdgeAdd + bottomEdgeAdd) + (bAdd * 2.0f); // also known as LineHeightBox
             final float lay = lineAlike * lhb; // also known as LineAlikeY
             
             // Y Positioning
@@ -1032,7 +1064,8 @@ public abstract class AbstractExpHud
                 case TopLeft:
                 case TopRight:
                 {
-                    y += yAdd + bAdd + lay;
+                    // y += yAdd + bAdd + lay;
+                     y += topEdgeAdd + bAdd + lay;
                     break;
                 }
                 // Center
@@ -1048,7 +1081,8 @@ public abstract class AbstractExpHud
                 case BottomLeft:
                 case BottomRight:
                 {
-                    y += hSize + yAdd + bAdd + lay - (assumingLineCount * lhb);
+                    // y += hSize + yAdd + bAdd + lay - (assumingLineCount * lhb);
+                    y += hSize + bottomEdgeAdd + bAdd + lay - (assumingLineCount * lhb);
                     break;
                 }
                 
@@ -1061,9 +1095,14 @@ public abstract class AbstractExpHud
         {
             x, y,
             
-            x - xAdd, y - yAdd,
-            x + sWidth  + xAdd,
-            y + sHeight + (yAdd - 1.0f)
+            x - leftEdgeAdd,
+            y - topEdgeAdd,
+            x + sWidth  + rightEdgeAdd,
+            y + sHeight + bottomEdgeAdd
+            
+            // x - xAdd, y - yAdd,
+            // x + sWidth  + xAdd,
+            // y + sHeight + (yAdd - 1.0f)
         };
     }
     
@@ -1137,7 +1176,7 @@ public abstract class AbstractExpHud
         if (this.prevExpStatuses.isEmpty())
         {
             this.prevExpStatuses.add(expStatus);
-            this.updateRoadTo100Cache();
+            this.updateTotalExpAccumulatedAlongWithLevels();
         }
         else
         {
@@ -1177,9 +1216,9 @@ public abstract class AbstractExpHud
                             // expDiff.
                             
                             // Add on the exp differentials; not much to worry as we've already
-                            // checked that the levels are more than 1. If it's two level-skips,
-                            // it would already be targeting to a single level and return only
-                            // that level's EXP Until Next Level.
+                            // checked that the levels are more than 1. If it's a level skip,
+                            // it would already be targeting to the skipped level and return only
+                            // its EXP Until Next Level.
                             expDiff += ExpStatics.accumulateExpFromLevelRanges
                                     (expStatusPrev.currentLevel + 1, expStatus.currentLevel - 1);
                         }
@@ -1189,7 +1228,7 @@ public abstract class AbstractExpHud
                     }
                 }
                 
-                this.updateRoadTo100Cache();
+                this.updateTotalExpAccumulatedAlongWithLevels();
             }
             // Assuming that the current EXP was changed to a higher one and ensure only to update
             // if shouldUpdateExps is set to true!
@@ -1211,13 +1250,17 @@ public abstract class AbstractExpHud
         }
     }
     
-    protected void updateRoadTo100Cache()
+    protected void updateTotalExpAccumulatedAlongWithLevels()
     {
         this.totalExpAccumulatedFromLevelCache =
                 ExpStatics.accumulateExpFromCurrentLevel(this.expStatus.currentLevel);
-        this.percentageUntilLevelOneHundred =
-                (float)((double)(this.totalExpAccumulatedFromLevelCache + this.expStatus.currentLevel) /
-                (double) ExpStatics.LEVEL_100_TOTAL_EXP);
+        this.updateTotalExpAccumulated();
     }
     
+    protected void updateTotalExpAccumulated()
+    {
+        this.totalExpAccumulated = this.totalExpAccumulatedFromLevelCache + this.expStatus.currentExp;
+        this.percentageUntilLevelOneHundred = (float)((double)this.totalExpAccumulated /
+                (double)ExpStatics.LEVEL_100_TOTAL_EXP);
+    }
 }

@@ -15,7 +15,7 @@ plugins {
 
 apply plugin: "net.minecraftforge.gradle.forge"
 
-version = "0.0.0"
+version = "0.1.0"
 group = "jugglestruggle" //http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "MineplexExpHud" //name of the output jar
 
@@ -58,7 +58,7 @@ processResources {
     inputs.property "mcversion", project.minecraft.version
 
     //replace stuff in mcmod.info, nothing else
-    from(sourceSets.main.resources.srcDirs) {
+    from(sourceSets.main.resources.srcDirs){
         include "mcmod.info"
 
         //replace version and mcversion

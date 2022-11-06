@@ -1,5 +1,21 @@
 /*
- * Copyright (c) 2022.
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
  */
 
 package jugglestruggle.mineplexexphud.forge.gui.widget;
@@ -10,7 +26,9 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class CyclingButtonWidget<V> extends ButtonWidget
@@ -30,6 +48,7 @@ public class CyclingButtonWidget<V> extends ButtonWidget
     private String displayTextFormatting;
     
     private BiPredicate<CyclingButtonWidget<V>, V> onValueChangeListener;
+    private Consumer<CyclingButtonWidget<V>> onPostValueChangeListener;
     
     public CyclingButtonWidget(int w, int h, String title, V value, List<V> values, Function<V, String> valueToText) {
         this(w, h, title, value, values, valueToText, null);
@@ -64,18 +83,18 @@ public class CyclingButtonWidget<V> extends ButtonWidget
     }
     private void setValue(V newValue, boolean setIndex)
     {
-        if (this.onValueChangeListener != null)
-        {
-            if (!this.onValueChangeListener.test(this, newValue))
-                return;
-        }
-        
+        if (this.onValueChangeListener != null && !this.onValueChangeListener.test(this, newValue))
+            return;
+    
         this.value = newValue;
         
         if (setIndex)
             this.updateValueIndex();
     
         this.updateDisplayText();
+        
+        if (this.onPostValueChangeListener != null)
+            this.onPostValueChangeListener.accept(this);
     }
     
     
@@ -117,6 +136,9 @@ public class CyclingButtonWidget<V> extends ButtonWidget
     
     public CyclingButtonWidget<V> setValueChangeListener(BiPredicate<CyclingButtonWidget<V>, V> changeListener) {
         this.onValueChangeListener = changeListener; return this;
+    }
+    public CyclingButtonWidget<V> setPostValueChangeListener(Consumer<CyclingButtonWidget<V>> changeListener) {
+        this.onPostValueChangeListener = changeListener; return this;
     }
 //    public CyclingButtonWidget<V> setValueToTooltipText(Function<V, String> valueToTooltipText) {
 //        this.valueToTooltipText = valueToTooltipText; return this;

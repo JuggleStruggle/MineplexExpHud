@@ -1,3 +1,23 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.gui.widget;
 
 import com.google.common.collect.ImmutableList;
@@ -40,22 +60,6 @@ public class WidgetRowListWidget<W extends Widget> extends GuiListExtended
         if (widgets != null)
             this.addEntries(widgets, multiWidgetsRowPredicate);
     }
-    /*
-    public ButtonRowListWidget(Minecraft client, int width, int height, int top, int bottom,
-                               int rowHeight, List<B> buttons)
-    {
-        super(client, width, height, top, bottom, rowHeight);
-        this.field_148163_i = false;
-
-        final int bSize = buttons.size();
-
-        for (int i = 0; i < bSize; i += 2) {
-            this.rows.add(new Row<>(this, buttons.get(i), (i < bSize - 1) ? buttons.get(i + 1) : null));
-        }
-
-        this.updateButtonLocations();
-    }
-     */
     
     protected WidgetEntry<W> create(W[] widgets) {
         return new WidgetEntry<>(this, widgets);
@@ -78,7 +82,7 @@ public class WidgetRowListWidget<W extends Widget> extends GuiListExtended
     }
     
     @Override
-    protected int getSize() {
+    public int getSize() {
         return this.entries.size();
     }
     
@@ -205,8 +209,11 @@ public class WidgetRowListWidget<W extends Widget> extends GuiListExtended
         this.focused = focused;
     }
     
-    public String[] getTooltipLines(int mouseX, int mouseY)
+    public String[] getTooltipLines(int mouseX, int mouseY, boolean fromRender)
     {
+        if (fromRender && !this.visible)
+            return null;
+        
         int i = super.getSlotIndexFromScreenCoords(mouseX, mouseY);
     
         if (i >= 0)
@@ -310,13 +317,7 @@ public class WidgetRowListWidget<W extends Widget> extends GuiListExtended
     
         public void updateWidgetLocations()
         {
-//            int rowWidth = this.rowList.getListWidth();
-//            int rowWidth = 155 * 2;
-//            int rowWidth = 155;
             int rowWidth = this.rowList.idealRowWidth / 2;
-            
-//            final int bX = (this.rowList.width / 2);
-//            final int bX = (this.rowList.width / 2) - (rowWidth / 2);
             final int bX = (this.rowList.width / 2) - rowWidth;
         
             if (this.widgets != null)

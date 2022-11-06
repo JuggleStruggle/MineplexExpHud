@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2022.
- */
-
 package jugglestruggle.util;
 
 public final class ColorUtility
