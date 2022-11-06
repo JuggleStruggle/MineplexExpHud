@@ -1,9 +1,30 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.gui.widget;
 
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.resources.I18n;
 
 import java.math.BigDecimal;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
 
@@ -16,21 +37,26 @@ public class NumericWidget extends AbstractMultiWidget
     protected Double min;
     protected Double max;
     
-    protected final TextWidget numbers;
+    protected final TextWidget numbersWidget;
     protected final ButtonWidget minusButton;
     protected final ButtonWidget plusButton;
     
-    // Left: New, Right: Old
-    protected BiPredicate<Double, Double> onValueChange;
+    /** Left: New, Right: Old */
+    protected BiPredicate<Double, Double> onValueChanged;
+    /** Left: New, Right: Old */
+    protected BiConsumer<Double, Double> onPostValueChanged;
     
-    boolean ignoreTextChecks;
-    boolean includeDecimals;
+    protected boolean ignoreTextChecks;
+    protected boolean includeDecimals;
     
     public NumericWidget(FontRenderer fr, int w, int h, int value, int min, int max, String tooltipText) {
         this(fr, w, h, value, (double)min, (double)max, tooltipText, false);
     }
     public NumericWidget(FontRenderer fr, int w, int h, long value, long min, long max, String tooltipText) {
         this(fr, w, h, value, (double)min, (double)max, tooltipText, false);
+    }
+    public NumericWidget(FontRenderer fr, int w, int h, float value, float min, float max, String tooltipText) {
+        this(fr, w, h, value, (double)min, (double)max, tooltipText, true);
     }
     public NumericWidget(FontRenderer fr, int w, int h, double value, Double min, Double max, String tooltipText) {
         this(fr, w, h, value, min, max, tooltipText, true);
@@ -46,23 +72,25 @@ public class NumericWidget extends AbstractMultiWidget
         this.startingValue = value;
         this.includeDecimals = includeDecimals;
     
-        this.numbers = new TextWidget(fr, w - 42, h - 2);
+        this.numbersWidget = new TextWidget(fr, w - 42, h - 2);
         this.minusButton = new ButtonWidget(20, h, "-", this::onMinusClick);
         this.plusButton = new ButtonWidget(20, h, "+", this::onPlusClick);
         
-        this.numbers.setText(this.includeDecimals ? Double.toString(value) : Long.toString((long)value));
-        this.numbers.setValidator(this::isNumericTextValid);
-        this.numbers.setTextChangedListener(this::applyNewTextAsValue);
+        this.numbersWidget.setText(this.includeDecimals ? Double.toString(value) : Long.toString((long)value));
+        this.numbersWidget.setValidator(this::isNumericTextValid);
+        this.numbersWidget.setTextChangedListener(this::applyNewTextAsValue);
         
-        this.numbers.setTooltipText(tooltipText);
+        this.numbersWidget.setTooltipText(tooltipText);
         this.minusButton.setTooltipText(I18n.format(LANG_FORMAT + "numerics.tooltipFormatForButtons",
                 tooltipText, I18n.format(LANG_FORMAT + "numerics.tooltipSubtract")));
         this.plusButton.setTooltipText(I18n.format(LANG_FORMAT + "numerics.tooltipFormatForButtons",
                 tooltipText, I18n.format(LANG_FORMAT + "numerics.tooltipAdd")));
         
-        this.childWidgets.add(this.numbers);
-        this.childWidgets.add(this.minusButton);
-        this.childWidgets.add(this.plusButton);
+        super.childWidgets.add(this.numbersWidget);
+        super.childWidgets.add(this.minusButton);
+        super.childWidgets.add(this.plusButton);
+        
+        this.checkForMinusPlusAvailability();
     }
     
     private boolean onMinusClick(ButtonWidget b)
@@ -73,6 +101,7 @@ public class NumericWidget extends AbstractMultiWidget
             newValue = this.min;
     
         this.onValueChanged(newValue, this.value);
+        this.checkForMinusPlusAvailability();
     
         return true;
     }
@@ -84,8 +113,15 @@ public class NumericWidget extends AbstractMultiWidget
             newValue = this.max;
     
         this.onValueChanged(newValue, this.value);
+        this.checkForMinusPlusAvailability();
     
         return true;
+    }
+    
+    void checkForMinusPlusAvailability()
+    {
+        this.minusButton.setInteractable(this.min == null || this.value > this.min);
+        this.plusButton .setInteractable(this.max == null || this.value < this.max);
     }
     
     private void onValueChanged(double newValue, double oldValue) {
@@ -99,31 +135,77 @@ public class NumericWidget extends AbstractMultiWidget
     
             if (updateText)
                 this.updateTextToValue();
+            
+            this.onPostValueUpdate(newValue, oldValue);
         }
     }
-    private boolean canChangeValue(double newValue, double oldValue)
+    protected boolean canChangeValue(double newValue, double oldValue)
     {
-        if (this.onValueChange != null)
-            return this.onValueChange.test(newValue, oldValue);
+        if (newValue == oldValue)
+            return false;
+        if (this.min != null && newValue < this.min)
+            return false;
+        if (this.max != null && newValue > this.max)
+            return false;
+        
+        if (this.onValueChanged != null)
+            return this.onValueChanged.test(newValue, oldValue);
         
         return true;
     }
     
-    public void setOnValueChange(BiPredicate<Double, Double> onValueChange) {
-        this.onValueChange = onValueChange;
+    /**
+     * Left: new, Right: old
+     * @param onValueChanged
+     */
+    public NumericWidget setValueChangeListener(BiPredicate<Double, Double> onValueChanged) {
+        this.onValueChanged = onValueChanged; return this;
+    }
+    /**
+     * Left: new, Right: old
+     * @param onPostValueChanged
+     */
+    public NumericWidget setPostValueChangeListener(BiConsumer<Double, Double> onPostValueChanged) {
+        this.onPostValueChanged = onPostValueChanged; return this;
     }
     
-    private void updateTextToValue()
+    protected void updateTextToValue() {
+        this.updateTextToValue(this.value);
+    }
+    private void updateTextToValue(double value)
     {
         this.ignoreTextChecks = true;
-        
-        this.numbers.setText(this.includeDecimals ?
-                Double.toString(this.value) : Long.toString((long)this.value));
-        
+    
+        this.numbersWidget.setText(this.includeDecimals ?
+                Double.toString(value) : Long.toString((long)value));
+    
         this.ignoreTextChecks = false;
     }
     
-    private boolean isNumericTextValid(String text)
+    /**
+     * If there are any minimum or maximum limits (or bounds), adjust the
+     * new value to that particular bound if it went beyond minimum or maximum.
+     */
+    public void adjustCurrentValueToBounds()
+    {
+        double newValue = this.value;
+        
+        if (this.min != null && newValue < this.min)
+            newValue = this.min;
+        if (this.max != null && newValue > this.max)
+            newValue = this.max;
+    
+        if (newValue != this.value)
+            this.onValueChanged(newValue, this.value);
+    }
+    
+    protected void onPostValueUpdate(double newValue, double oldValue)
+    {
+        if (this.onPostValueChanged != null)
+            this.onPostValueChanged.accept(newValue, oldValue);
+    }
+    
+    protected boolean isNumericTextValid(String text)
     {
         if (this.ignoreTextChecks)
             return true;
@@ -144,7 +226,7 @@ public class NumericWidget extends AbstractMultiWidget
             return false;
         }
     }
-    private void applyNewTextAsValue(String newText, String oldText)
+    protected void applyNewTextAsValue(String newText, String oldText)
     {
         if (this.ignoreTextChecks)
             return;
@@ -154,11 +236,18 @@ public class NumericWidget extends AbstractMultiWidget
             double value = Double.parseDouble(newText);
             
             if (this.min != null && value < this.min)
+            {
                 value = this.min;
-            else if (this.max != null && value > this.max)
+                this.updateTextToValue(this.min);
+            }
+            if (this.max != null && value > this.max)
+            {
                 value = this.max;
+                this.updateTextToValue(this.max);
+            }
             
             this.onValueChanged(value, this.value, false);
+            this.checkForMinusPlusAvailability();
         }
         catch (NumberFormatException e) {
             // swallow
@@ -168,8 +257,8 @@ public class NumericWidget extends AbstractMultiWidget
     @Override
     protected void updateWidgetPositions()
     {
-        this.numbers.setPos(this.x + 1, this.y + 1);
-        this.numbers.setSize(this.width - 42, this.height - 2);
+        this.numbersWidget.setPos(this.x + 1, this.y + 1);
+        this.numbersWidget.setSize(this.width - 42, this.height - 2);
         this.plusButton.setPos(this.x + this.width - 20, this.y);
         this.minusButton.setPos(this.x + this.width - 40, this.y);
     }
@@ -180,49 +269,56 @@ public class NumericWidget extends AbstractMultiWidget
     public double getStartingValue() {
         return this.startingValue;
     }
-    public int getIntValue() {
+    
+    public int getValueInt() {
         return BigDecimal.valueOf(this.getValue()).intValue();
     }
-    
-    /**
-     * Left: new, Right: old
-     * @param onValueChange
-     */
-    public NumericWidget setValueChangeListener(BiPredicate<Double, Double> onValueChange) {
-        this.onValueChange = onValueChange; return this;
+    public long getValueLong() {
+        return BigDecimal.valueOf(this.getValue()).longValue();
+    }
+    public float getValueFloat() {
+        return BigDecimal.valueOf(this.getValue()).floatValue();
     }
     
-    /*
-    @Override
-    public boolean onMouseDown(Minecraft client, int mouseX, int mouseY, int button)
-    {
-        if (this.isMouseOver(mouseX, mouseY))
-        {
-            this.numbers.onMouseDown(client, mouseX, mouseY, button);
-            this.minusButton.onMouseDown(client, mouseX, mouseY, button);
-            this.plusButton.onMouseDown(client, mouseX, mouseY, button);
-
-            return true;
-        }
-
-        return false;
+    public Double getMin() {
+        return this.min;
     }
-
-    @Override
-    public boolean onMouseUp(int mouseX, int mouseY, int button)
-    {
-        boolean s = this.numbers.onMouseUp(mouseX, mouseY, button);
-        s |= this.minusButton.onMouseUp(mouseX, mouseY, button);
-        s |= this.plusButton.onMouseUp(mouseX, mouseY, button);
-
-        return s;
+    public Double getMax() {
+        return this.max;
     }
-
-    @Override
-    public boolean onKeyTyped(char charCode, int keyCode)
-    {
-        this.numbers.onKeyTyped(charCode, keyCode);
-        return false;
+    
+    public long getMaxLong() {
+        return BigDecimal.valueOf(this.getMax()).longValue();
     }
-     */
+    
+    public void setValue(double value)
+    {
+        this.onValueChanged(value, this.value);
+        this.checkForMinusPlusAvailability();
+    }
+    public void setValue(int value) {
+        this.setValue((double)value);
+    }
+    public void setValue(long value) {
+        this.setValue((double)value);
+    }
+    
+    public void setMin(Double min) {
+        this.min = min; this.checkForMinusPlusAvailability();
+    }
+    public void setMax(Double max) {
+        this.max = max; this.checkForMinusPlusAvailability();
+    }
+    public void setMin(int min) {
+        this.setMin((double)min);
+    }
+    public void setMax(int max) {
+        this.setMax((double)max);
+    }
+    public void setMin(long min) {
+        this.setMin((double)min);
+    }
+    public void setMax(long max) {
+        this.setMax((double)max);
+    }
 }

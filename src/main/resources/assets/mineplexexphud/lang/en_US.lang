@@ -9,40 +9,38 @@ jugglestruggle.saveandreturn=Save and Return
 # Preference Options
 jugglestruggle.miplexp.preferences=JuggleStruggle's Mineplex EXP HUD Mod - Preferences
 jugglestruggle.miplexp.expUpdateEnabled=EXP Updates
+jugglestruggle.miplexp.expUpdateEnabled.description=Checks for any new EXP information\nsuch as /xp command output\nand + EXP chat types.
 jugglestruggle.miplexp.showWhileDebugScreenActive=Show on Debug HUD
 jugglestruggle.miplexp.postRender=Render Last
 jugglestruggle.miplexp.worldChangeUseDelays=Delay on World Change
 jugglestruggle.miplexp.showHud=Show HUD
-jugglestruggle.miplexp.drawTextWithShadow=HUD Text w/ Shadow
-jugglestruggle.miplexp.textColor=Text
-jugglestruggle.miplexp.backgroundColor=Background
-jugglestruggle.miplexp.borderColor=Border
-jugglestruggle.miplexp.progressBackgroundColor=Background (Progress Bar)
-jugglestruggle.miplexp.progressBorderColor=Border (Progress Bar)
-jugglestruggle.miplexp.lineToShowProgress=Line to Show Progression
-jugglestruggle.miplexp.hudPositioning=HUD Positioning
-jugglestruggle.miplexp.screenPositioning=Screen Area
 jugglestruggle.miplexp.millisUntilNextExpUpdate=Milliseconds Until Next EXP Update\n(1000 ms -> 1 second)\n\nIMPORTANT!\nThis updates in real time!
 jugglestruggle.miplexp.worksLocally=Works Offline
 jugglestruggle.miplexp.worksLocally.notimplemented=There are no server checks implemented
 jugglestruggle.miplexp.ignoreEmptyExp=Ignore Empty EXP
+jugglestruggle.miplexp.ignoreEmptyExp.description=To ignore "empty EXPs", it must fall\nunder one of the options:\n\n- Level 0's fresh statistics\n- Empty level statistics (all 0s)
+jugglestruggle.miplexp.expGainedInSetTime=Set time to reset "Set Time for\nGained EXPs and Levels"
+jugglestruggle.miplexp.screenPositioning=Screen Area
 
-
+# Accuracy
 jugglestruggle.miplexp.accuracy=Accuracy
 jugglestruggle.miplexp.accuracy.account_for_all_lines=For All Lines
 jugglestruggle.miplexp.accuracy.account_for_all_lines.description=Known as: Strict\n\nEnsures that the right EXP command\noutput is fully given and "swallows"\nif it has all of the necessary lines.
 jugglestruggle.miplexp.accuracy.only_on_what_matters=Only What Matters
 jugglestruggle.miplexp.accuracy.only_on_what_matters.description=Known as: Loose\n\nShows the EXP Command output and\nonly goes for what it wants:\n\n- Current EXP, EXP Until Next Level\n- Current Level and Next Level
 
+# Update Method
 jugglestruggle.miplexp.updateMethod=Update
 jugglestruggle.miplexp.updateMethod.on_world_change=World Change
 jugglestruggle.miplexp.updateMethod.until_next_ms_update=Set Intervals
+jugglestruggle.miplexp.updateMethod.disabled=<exp updating is disabled>
 
+# Display Formatting Screen
 jugglestruggle.miplexp.displayFormatting=Display Formatting
 jugglestruggle.miplexp.displayFormatting.preferences=Display Formatting Preferences
 jugglestruggle.miplexp.displayFormatting.preview=Preview
-jugglestruggle.miplexp.displayFormatting.preview.notimplemented=Previewing is not implemented
-jugglestruggle.miplexp.displayFormatting.showAvailableFormatters=Format Examples
+jugglestruggle.miplexp.displayFormatting.preview.nothingToShow=Nothing to show!
+jugglestruggle.miplexp.displayFormatting.showAvailableFormatters=Show Formats
 jugglestruggle.miplexp.displayFormatting.validFormats=Lines to be used on the HUD: %1$s/%2$s (%3$s%%)
 jugglestruggle.miplexp.displayFormatting.add=Add Below
 jugglestruggle.miplexp.displayFormatting.duplicate=Duplicate Below
@@ -77,11 +75,40 @@ jugglestruggle.miplexp.displayFormatting.levelGainedInSetTime.example=The amount
 jugglestruggle.miplexp.displayFormatting.expGainedInSetTime.example=The amount of EXP gained during the time it resets
 jugglestruggle.miplexp.displayFormatting.guessAccumulatedExp.example=Uses the current level and adds Total EXP along with Current EXP to determine how much one actually has
 jugglestruggle.miplexp.displayFormatting.guessAccumulatedExpPercentage.example=Uses the Accumulated EXP (guess-timate) and divides it with the accumulated EXP to reach level 100
+jugglestruggle.miplexp.lineToShowProgress=Line to Show Progression
 
-jugglestruggle.miplexp.coloring=Coloring
-jugglestruggle.miplexp.coloring.preferences=HUD Color Preferences
+# Visuals Screen (Formerly known as Coloring)
+jugglestruggle.miplexp.visuals=Visuals
+jugglestruggle.miplexp.visuals.preferences=Visual Preferences
+jugglestruggle.miplexp.textColor=Text Color
+jugglestruggle.miplexp.backgroundColor=Background Color
+jugglestruggle.miplexp.borderColor=Border Color
+jugglestruggle.miplexp.progressBackgroundColor=Background Color (Progress Bar)
+jugglestruggle.miplexp.progressBorderColor=Border Color (Progress Bar)
+jugglestruggle.miplexp.drawTextWithShadow=HUD Text w/ Shadow
+jugglestruggle.miplexp.showBorders=Show Borders
 
+# HUD Edges Screen
+jugglestruggle.miplexp.hudEdges=HUD Background Edge
+jugglestruggle.miplexp.hudEdges.preferences=HUD Background Edge Preferences
+jugglestruggle.miplexp.hudEdges.preview.nothingToShow=This is an example\nline used for rendering
+jugglestruggle.miplexp.hudEdges.all_at_once=All at once
+jugglestruggle.miplexp.hudEdges.all_at_once.description=Modify one of the edges to\nadd or subtract the rest
+jugglestruggle.miplexp.hudEdges.axis=Axis (X or Y)
+jugglestruggle.miplexp.hudEdges.axis.description=Modifies an axis-defined edge\nto affect its other variant by\nadding or subtracting\n\n- X Axis: Left & Right\n- Y Axis: Top & Bottom
+jugglestruggle.miplexp.hudEdges.individual=Individually
+jugglestruggle.miplexp.hudEdges.individual.description=Only affects the modifying edge
+jugglestruggle.miplexp.hudEdges.left=Left Edge
+jugglestruggle.miplexp.hudEdges.right=Right Edge
+jugglestruggle.miplexp.hudEdges.top=Top Edge
+jugglestruggle.miplexp.hudEdges.bottom=Bottom Edge
+jugglestruggle.miplexp.hudEdges.moveBy=Move by
+jugglestruggle.miplexp.hudEdges.resetToDefaults=Reset to Defaults
+jugglestruggle.miplexp.hudEdges.preview=Preview
+
+# HUD Editor Screen
 jugglestruggle.miplexp.hudEditor=HUD Editor
+jugglestruggle.miplexp.hudPositioning=HUD Positioning
 jugglestruggle.hudpos.none=None
 jugglestruggle.hudpos.topleft=Top Left
 jugglestruggle.hudpos.top=Top

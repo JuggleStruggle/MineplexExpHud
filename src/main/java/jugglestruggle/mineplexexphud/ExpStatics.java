@@ -1,3 +1,23 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud;
 
 import com.google.common.collect.ImmutableMap;
@@ -54,7 +74,7 @@ public final class ExpStatics
         
         // There must be more "addition" patterns... but all of this is done by an unranked
         // player and some more might have been missed, so it'd be nice to get formatted patterns
-        // that are actually sent from the server
+        // that are actually sent from the server and not just from a screenshot
         EXP_ADDITION_PATTERN = new Pattern[]
         {
             Pattern.compile("§r§7  \\+§r§e(\\d+) §r§7Experience§r"),
@@ -136,11 +156,11 @@ public final class ExpStatics
     
     public static long accumulateExpFromCurrentLevel(int level)
     {
-        if (level > 100)
-            level = 100;
-        else if (level < 0)
+        if (level < 0)
             return 0;
-        
+        else if (level > 100)
+            level = 100;
+    
         long accumulatedExp = 0;
         
         for (int i = 0; i < level; ++i)
@@ -152,7 +172,7 @@ public final class ExpStatics
      *
      * @param min inclusive at bound-only
      * @param max inclusive
-     * @return
+     * @return the total exp accumulated starting from {@code min} to {@code max}
      */
     public static long accumulateExpFromLevelRanges(int min, int max)
     {
@@ -169,18 +189,21 @@ public final class ExpStatics
             return 0;
         else if (max > 100)
             max = 100;
-        else if (min == max)
+        
+        if (min == max)
             return EXP_UNTIL_NEXT_LEVEL.get(min);
-        
-        if (min < 0)
-            min = 0;
-        
-        long accumulatedExp = 0;
-        
-        for (int i = min; i <= max; ++i)
-            accumulatedExp += EXP_UNTIL_NEXT_LEVEL.get(i);
-        
-        return accumulatedExp;
+        else
+        {
+            if (min < 0)
+                min = 0;
+    
+            long accumulatedExp = 0;
+    
+            for (int i = min; i <= max; ++i)
+                accumulatedExp += EXP_UNTIL_NEXT_LEVEL.get(i);
+    
+            return accumulatedExp;
+        }
     }
     
     

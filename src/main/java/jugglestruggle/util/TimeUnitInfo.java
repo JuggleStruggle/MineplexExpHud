@@ -2,7 +2,6 @@ package jugglestruggle.util;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import jugglestruggle.mineplexexphud.pref.ElemFunction;
 
 public class TimeUnitInfo implements ElemFunction<TimeUnitInfo>
@@ -35,6 +34,13 @@ public class TimeUnitInfo implements ElemFunction<TimeUnitInfo>
     
     public String getDisplayText() {
         return this.unit.format(""+this.value, this.value == 1);
+    }
+    
+    public long getMin() {
+        return this.unit.getMinMillis();
+    }
+    public long getMax() {
+        return this.unit.getMaxMillis();
     }
     
     

@@ -1,6 +1,28 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.gui.screen;
 
+import jugglestruggle.mineplexexphud.AbstractExpHud;
 import jugglestruggle.mineplexexphud.MineplexExpHudClient;
+import jugglestruggle.mineplexexphud.forge.ForgeRenderContext;
 import jugglestruggle.mineplexexphud.forge.MineplexExpHudClientForge;
 import jugglestruggle.mineplexexphud.forge.gui.widget.ButtonRowListWidget;
 import jugglestruggle.mineplexexphud.forge.gui.widget.ButtonWidget;
@@ -11,18 +33,21 @@ import jugglestruggle.mineplexexphud.forge.gui.widget.Widget;
 import jugglestruggle.mineplexexphud.forge.gui.widget.WidgetRowListWidget;
 import jugglestruggle.mineplexexphud.hud.info.LineInfoCache;
 import jugglestruggle.mineplexexphud.pref.Preferences;
+import jugglestruggle.util.TextUtility;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 import org.lwjgl.input.Keyboard;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 
 import static jugglestruggle.mineplexexphud.MineplexExpHudClient.LANG_FORMAT;
+import static jugglestruggle.mineplexexphud.MineplexExpHudClient.getLang;
 
-public class DisplayFormatPreferencesScreen extends Screen
+public class DisplayFormatPreferencesScreen extends BaseEditScreen
 {
     public static final AvailableFormat[] FORMATTERS_AVAILABLE;
     
@@ -63,104 +88,102 @@ public class DisplayFormatPreferencesScreen extends Screen
     CyclingButtonWidget<Boolean> togglePreviewMode;
     CyclingButtonWidget<Boolean> toggleFormattersListView;
     NumericWidget lineToShowProgress;
-    ButtonWidget doneButton;
     
     float previewModeWidthPercent = 0.5f;
     float displayStringListPercentage = 0.8f;
     
-    boolean valid;
+    /**
+     * Lines which are used and rendered once the user decides to toggle "Show Preview"
+     * and is continually updated as the user makes changes to the lines they are working
+     * on.
+     *
+     * <p> It is to be cleared once the user disables "Show preview".
+     */
+    LineInfoCache[] previewLines;
     
-    String[] titles;
-    int[] titlesWidth;
+    private long lineToShowProgressValue;
+    private long lineToShowProgressUserValue;
+    private boolean lineToShowProgressApplyUserValue;
     
     public DisplayFormatPreferencesScreen(GuiScreen parentScreen) {
-        super(parentScreen); this.valid = true;
+        super(parentScreen);
     }
     
     @Override
-    public void initGui()
+    protected void createWidgets()
     {
-        if (!super.screenCreated)
-        {
-            this.titles = new String[2];
-            this.titlesWidth = new int[2];
-            this.updateTitleLine(0, I18n.format(LANG_FORMAT + "displayFormatting.preferences"));
+        super.createTitles(2);
+        super.updateTitleLine(0, I18n.format(LANG_FORMAT + "displayFormatting.preferences"));
     
-            this.displayStringList = new DisplayStringList(this);
-            this.availableFormattersList = new AvailableFormattersList(this);
-            this.availableFormattersList.visible = false;
+        this.displayStringList = new DisplayStringList(this);
+        this.availableFormattersList = new AvailableFormattersList(this);
+        this.availableFormattersList.visible = false;
     
-            super.listWidgets = new ArrayList<>(2);
-            super.listWidgets.add(this.displayStringList);
-            super.listWidgets.add(this.availableFormattersList);
-            
-            this.togglePreviewMode = CyclingButtonWidget.bool(150, 20,
-                    I18n.format(LANG_FORMAT+"displayFormatting.preview"),
-                    false, (byte)0).setValueChangeListener(this::onPreviewUpdate);
-            this.toggleFormattersListView = CyclingButtonWidget.bool(150, 20,
-                    I18n.format(LANG_FORMAT+"displayFormatting.showAvailableFormatters"),
-                    false, (byte)1).setValueChangeListener(this::onShowFormatterListViewUpdate);
-   
-            this.togglePreviewMode.setTooltipText(I18n.format(LANG_FORMAT +
-                    "displayFormatting.preview.notimplemented"));
-            
-            this.togglePreviewMode.enabled = false;
-//            this.toggleFormattersListView.enabled = false;
-            
-            this.lineToShowProgress = new NumericWidget(this.mc.fontRendererObj, 150, 20,
-                    Preferences.lineToShowProgress + 1,0, Integer.MAX_VALUE - 1,
-                    I18n.format(LANG_FORMAT+"lineToShowProgress"));
-            
-            this.lineToShowProgress.setOnValueChange((newValue, o) -> {
-                Preferences.lineToShowProgress = (int)(double)newValue - 1; return true;
-            });
+        super.listWidgets = new ArrayList<>(2);
+        super.listWidgets.add(this.displayStringList);
+        super.listWidgets.add(this.availableFormattersList);
     
-            this.doneButton = new ButtonWidget(150, 20, I18n.format("jugglestruggle.saveandreturn"), this::onDoneClick);
-            
-            super.widgets.add(this.togglePreviewMode);
-            super.widgets.add(this.toggleFormattersListView);
-            super.widgets.add(this.doneButton);
-            super.widgets.add(this.lineToShowProgress);
+        this.togglePreviewMode = CyclingButtonWidget.bool(150, 20,
+                I18n.format(LANG_FORMAT+"displayFormatting.preview"),
+                false, (byte)0).setPostValueChangeListener(this::onPreviewUpdate);
+        this.toggleFormattersListView = CyclingButtonWidget.bool(150, 20,
+                I18n.format(LANG_FORMAT+"displayFormatting.showAvailableFormatters"),
+                false, (byte)1).setValueChangeListener(this::onShowFormatterListViewUpdate);
     
-            super.screenCreated = true;
-        }
+        this.lineToShowProgressValue = Preferences.lineToShowProgress;
+        this.lineToShowProgressUserValue = this.lineToShowProgressValue + 1L;
+        this.lineToShowProgressApplyUserValue = true;
     
+        this.lineToShowProgress = new NumericWidget(this.mc.fontRendererObj, 150, 20,
+                this.lineToShowProgressUserValue,0L, (long)Integer.MAX_VALUE + 1L,
+                I18n.format(LANG_FORMAT+"lineToShowProgress"));
+    
+        this.lineToShowProgress.setValueChangeListener(this::onLineToShowProgressValueChange);
+        
+        this.updateLineAdditionAndRemovals();
+        
+        super.widgets.add(this.togglePreviewMode);
+        super.widgets.add(this.toggleFormattersListView);
+        super.widgets.add(this.lineToShowProgress);
+    }
+    
+    @Override
+    protected void resize()
+    {
         Keyboard.enableRepeatEvents(true);
     
         // Update the location and the size of the widgets and also add any buttons that were removed along the way
     
         int idealHeight = this.height - 54;
     
-        int listsWidth = this.togglePreviewMode.getValue() ?
-                (int)((float)this.width * this.previewModeWidthPercent) : this.width;
+        int idealWidth = this.togglePreviewMode.getValue() ?
+                (this.width - (int)((float)this.width * this.previewModeWidthPercent)) - 2: this.width;
         int listsSHeight = this.availableFormattersList.visible ?
-                (int)((float)idealHeight * this.displayStringListPercentage) : idealHeight;
-    
-        if (this.availableFormattersList.visible)
-            this.displayStringList.setDimensions(listsWidth, listsSHeight, 32, listsSHeight - 2);
-        else
-            this.displayStringList.setDimensions(listsWidth, this.height, 32, listsSHeight);
-            
+                (int)((float)idealHeight * this.displayStringListPercentage) - 2: idealHeight;
     
         if (this.availableFormattersList.visible)
         {
-            int sHeight = idealHeight - listsSHeight;
-            
+            this.displayStringList.setDimensions(idealWidth, listsSHeight, 32, listsSHeight);
+    
             this.availableFormattersList.setDimensions
             (
-                listsWidth, sHeight,
+                idealWidth - 2, idealHeight - listsSHeight + 2,
                 listsSHeight + 2, idealHeight
             );
         }
+        else
+            this.displayStringList.setDimensions(idealWidth, this.height, 32, listsSHeight);
     
-        int x = this.width / 2;
-        int y = this.height - 24;
+    
+        final int x = this.width / 2;
+        final int y = this.height - 26;
     
         this.toggleFormattersListView.setPos(x - 151, y - 22);
         this.lineToShowProgress.setPos(x + 1, y - 22);
         this.togglePreviewMode.setPos(x - 151, y);
-        this.doneButton.setPos(x + 1, y);
-        
+        super.doneButton.setPos(x + 1, y);
+    
+        this.updatePreviewLinesRenderingPos();
     }
     
     @Override
@@ -177,24 +200,35 @@ public class DisplayFormatPreferencesScreen extends Screen
         super.onGuiClosed();
     }
     
-    private boolean onPreviewUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
-        return false;
+    private void onPreviewUpdate(CyclingButtonWidget<Boolean> b) {
+        this.initGui(); this.updatePreviewLines();
     }
     private boolean onShowFormatterListViewUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
         this.availableFormattersList.visible = v; this.initGui(); return true;
     }
     
-    private boolean onDoneClick(ButtonWidget b)
+    private boolean onLineToShowProgressValueChange(Double newValue, Double oldValue)
     {
-        this.validateAndSaveFormatting();
-        MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
+        BigDecimal newValueD = BigDecimal.valueOf(newValue);
         
-        this.mc.displayGuiScreen(this.parentScreen);
+        this.lineToShowProgressValue = newValueD.subtract(BigDecimal.ONE).longValue();
+        
+        if (this.lineToShowProgressApplyUserValue)
+            this.lineToShowProgressUserValue = newValueD.longValue();
         
         return true;
     }
     
-    private void validateAndSaveFormatting()
+    @Override
+    protected boolean onDoneClick(ButtonWidget b)
+    {
+        this.applyValuesToPreferences();
+        MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
+        
+        return super.onDoneClick(b);
+    }
+    
+    private String validateAndCreateSingleLineFormatting()
     {
         StringBuilder b = new StringBuilder();
         
@@ -212,31 +246,135 @@ public class DisplayFormatPreferencesScreen extends Screen
                 if (acceptedEntries > 0)
                     b.append("\\n");
                 
-                b.append(dse.formatBox.getText());
+                // b.append(dse.formatBox.getText());
+                b.append(dse.getFormatBoxParsedText());
                 
                 ++acceptedEntries;
             }
         }
-     
         
+        return b.toString();
+    }
+    
+ 
+    
+    void updateLineAdditionAndRemovals()
+    {
+        final int rowSize = this.displayStringList.getSize();
+        float val = (float)this.displayStringList.rowsWithValidFormats / (float)rowSize;
         
-        Preferences.displayFormatting = b.toString();
+        if (Float.isNaN(val))
+            val = 0.0f;
+        
+        super.updateTitleLine
+        (
+            1, I18n.format
+            (
+                LANG_FORMAT + "displayFormatting.validFormats",
+                this.displayStringList.rowsWithValidFormats, rowSize,
+                MineplexExpHudClientForge.getForgeInstance().getExpHud()
+                    .progressPercentageFormat.format(val * 100.0f)
+            )
+        );
+        
+        this.updatePreviewLines();
+        this.updateLineToShowProgressWidgetMaximum();
+    }
+    void updateLineToShowProgressWidgetMaximum()
+    {
+        if (this.lineToShowProgress == null)
+            return;
+    
+        if (this.displayStringList.rowsWithValidFormats <= 0) {
+            this.lineToShowProgress.setMax(Integer.MAX_VALUE + 1L);
+        } else {
+            this.lineToShowProgress.setMax(this.displayStringList.rowsWithValidFormats);
+        }
+    
+        this.lineToShowProgressApplyUserValue = false;
+    
+        final long currentMax = this.lineToShowProgress.getMaxLong();
+    
+        this.lineToShowProgress.setValue(this.lineToShowProgressUserValue <= currentMax ?
+                this.lineToShowProgressUserValue : currentMax);
+    
+        this.lineToShowProgressApplyUserValue = true;
+    }
+    void updatePreviewLines()
+    {
+        // Just how many failsafes do I have to make in order for it not to crash
+        // whenever initializing the menu?
+        if (this.togglePreviewMode == null)
+            return;
+        
+        if (this.togglePreviewMode.getValue())
+        {
+            AbstractExpHud hud = MineplexExpHudClient.getInstance().getExpHud();
+            
+            LineInfoCache[] lines = hud.attemptDisplayFormattingS
+                    (this.validateAndCreateSingleLineFormatting(), false);
+            
+            if (lines == null)
+            {
+                lines = hud.attemptDisplayFormattingS(getLang().translate
+                        (LANG_FORMAT+"displayFormatting.preview.nothingToShow"), false);
+            }
+            
+            this.previewLines = lines;
+            
+            this.updatePreviewLinesRenderingPos();
+        }
+        else
+        {
+            this.previewLines = null;
+        }
+    }
+    void updatePreviewLinesRenderingPos()
+    {
+        if (this.previewLines == null)
+            return;
+    
+        final int idealWidth = (this.width - (int)((float)this.width * this.previewModeWidthPercent));
+        final int idealBottom = this.availableFormattersList.visible ?
+                this.availableFormattersList.bottom : this.displayStringList.bottom;
+        
+        MineplexExpHudClient.getInstance().getExpHud().updateLineRenderPosBox
+        (
+            this.previewLines,
+            idealWidth + 6, this.displayStringList.top + 4,
+            this.width - (idealWidth + 10),
+            idealBottom - (this.displayStringList.top + 8)
+        );
     }
     
     
+    private void applyValuesToPreferences()
+    {
+        Preferences.displayFormatting = this.validateAndCreateSingleLineFormatting();
+        Preferences.lineToShowProgress = (int)this.lineToShowProgressValue;
+    }
     
     
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta)
     {
+        final int idealWidth = this.togglePreviewMode.getValue() ?
+                (this.width - (int)((float)this.width * this.previewModeWidthPercent)) - 2 : this.width;
+        final int idealBottom = this.availableFormattersList.visible ?
+                this.availableFormattersList.bottom : this.displayStringList.bottom;
+        
         if (this.mc.theWorld == null)
         {
             this.drawBackground(0);
             
-            Gui.drawRect(0, this.displayStringList.top, this.width, this.displayStringList.bottom, 0x88000000);
+            Gui.drawRect(0, this.displayStringList.top, this.displayStringList.right,
+                    this.displayStringList.bottom, 0x88000000);
     
             if (this.availableFormattersList.visible)
-                Gui.drawRect(0, this.availableFormattersList.top, this.width, this.availableFormattersList.bottom, 0x88000000);
+                Gui.drawRect(0, this.availableFormattersList.top, idealWidth, this.availableFormattersList.bottom, 0x88000000);
+            
+            if (this.togglePreviewMode.getValue())
+                Gui.drawRect(idealWidth + 4, this.displayStringList.top, this.width, idealBottom, 0x88000000);
         }
         else
         {
@@ -244,33 +382,39 @@ public class DisplayFormatPreferencesScreen extends Screen
     
             if (this.availableFormattersList.visible)
             {
-                Gui.drawRect(0, this.displayStringList.bottom, this.width, this.availableFormattersList.top, 0x88000000);
-                Gui.drawRect(0, this.availableFormattersList.top, this.width, this.availableFormattersList.bottom, 0xDD111111);
-                Gui.drawRect(0, this.availableFormattersList.bottom, this.width, this.height, 0x88000000);
+                Gui.drawRect(0, this.displayStringList.bottom, idealWidth, this.availableFormattersList.top, 0x88000000);
+                Gui.drawRect(0, this.availableFormattersList.top, idealWidth, this.availableFormattersList.bottom, 0xDD111111);
             }
-            else
-            {
-                Gui.drawRect(0, this.displayStringList.bottom, this.width, this.height, 0x88000000);
-            }
+    
+            Gui.drawRect(0, idealBottom, this.width, this.height, 0x88000000);
+    
+            if (this.togglePreviewMode.getValue())
+                Gui.drawRect(idealWidth, this.displayStringList.top, idealWidth + 4, idealBottom, 0x88000000);
         }
         
-        for (int i = 0; i < this.titles.length; ++i)
+        if (this.togglePreviewMode.getValue() && this.previewLines != null)
         {
-            this.mc.fontRendererObj.drawString
+            ForgeRenderContext ctx = MineplexExpHudClientForge.getCtx();
+    
+            ctx.createScissor
             (
-                this.titles[i],
-                (this.width / 2) - (this.titlesWidth[i] / 2),
-                10 + ((this.mc.fontRendererObj.FONT_HEIGHT + 2) * i), 0xFFFFFF
+                idealWidth + 4, this.displayStringList.top,
+                this.width - (idealWidth + 4), idealBottom - this.displayStringList.top
             );
+            
+            int previousLineToShowProgress = Preferences.lineToShowProgress;
+            Preferences.lineToShowProgress = (int)this.lineToShowProgressValue;
+            
+            // Why not use the same method of rendering as it relies more on the line and text
+            // positioning more than anything else?
+            MineplexExpHudClientForge.getForgeExpHud().render(this.previewLines, ctx, delta);
+            
+            Preferences.lineToShowProgress = previousLineToShowProgress;
+            
+            ctx.removeScissor();
         }
         
         super.drawScreen(mouseX, mouseY, delta);
-    }
-    
-    private void updateTitleLine(int i, String text)
-    {
-        this.titles[i] = text;
-        this.titlesWidth[i] = this.mc.fontRendererObj.getStringWidth(text);
     }
     
     interface AvailableFormat
@@ -281,7 +425,7 @@ public class DisplayFormatPreferencesScreen extends Screen
         
         default String getFormat() {
             return "%" + this.matchId() + "$s";
-//            return Matcher.quoteReplacement("%" + this.matchId() + "$s");
+            // return Matcher.quoteReplacement("%" + this.matchId() + "$s");
         }
         default String getDesc() {
             return I18n.format(LANG_FORMAT + "displayFormatting." + this.descTranslation());
@@ -297,7 +441,7 @@ public class DisplayFormatPreferencesScreen extends Screen
         
         public DisplayStringList(DisplayFormatPreferencesScreen owningScreen)
         {
-            super(owningScreen, 0, 0, 0, 0, 24, null, null);
+            super(owningScreen, 0, 0, 0, 0, 20, null, null);
             this.repositionWidgetsX = false;
 
             this.rowsWithValidFormats = 0;
@@ -322,8 +466,6 @@ public class DisplayFormatPreferencesScreen extends Screen
             for (WidgetEntry<Widget> dse : super.entries)
                 if (((DisplayStringEntry)dse).validFormat)
                     ++this.rowsWithValidFormats;
-            
-            this.updateValidLines();
         }
         
         void add(DisplayStringEntry reference, String startingFormat)
@@ -366,34 +508,27 @@ public class DisplayFormatPreferencesScreen extends Screen
                 super.entries.remove(index);
             }
             
-            this.updateValidLines();
-            this.updateWidgetLocations();
+            if (super.entries.isEmpty())
+                this.add(null, null);
+            else
+            {
+                this.updateValidLines();
+                this.updateWidgetLocations();
+            }
         }
         
-        public void updateValidLines()
-        {
-            final int rowSize = super.getSize();
-
-            ((DisplayFormatPreferencesScreen)super.owningScreen).updateTitleLine
-            (
-                1, I18n.format
-                (
-                    LANG_FORMAT + "displayFormatting.validFormats",
-                    this.rowsWithValidFormats, rowSize,
-                    MineplexExpHudClientForge.getForgeInstance().getExpHud().progressPercentageFormat.format
-                            (((float)this.rowsWithValidFormats / (float)rowSize) * 100.0f)
-                )
-            );
+        public void updateValidLines() {
+            ((DisplayFormatPreferencesScreen)super.owningScreen).updateLineAdditionAndRemovals();
+        }
+        public void updatePreviewLines() {
+            ((DisplayFormatPreferencesScreen)super.owningScreen).updatePreviewLines();
         }
         
         public DisplayStringEntry getActiveEntry()
         {
             for (WidgetEntry<Widget> entry : super.entries)
-            {
-                if (entry.isFocused()) {
+                if (entry.isFocused())
                     return (DisplayStringEntry)entry;
-                }
-            }
             
             return null;
         }
@@ -417,28 +552,15 @@ public class DisplayFormatPreferencesScreen extends Screen
         public static DisplayStringEntry of(DisplayStringList owner, String startingFormat)
         {
             TextWidget formatText = new TextWidget(owner.getClient().fontRendererObj, 144, 12);
-            ButtonWidget add = new ButtonWidget(20, 20, "+", null);
-            ButtonWidget duplicate = new ButtonWidget(20, 20, "++", null);
-            ButtonWidget reset = new ButtonWidget(20, 20, "\u21BA", null);
-            ButtonWidget remove = new ButtonWidget(20, 20, "X", null);
+            ButtonWidget add       = new ButtonWidget(18, 18, "+", null);
+            ButtonWidget duplicate = new ButtonWidget(18, 18, "++", null);
+            ButtonWidget reset     = new ButtonWidget(18, 18, "\u21BA", null);
+            ButtonWidget remove    = new ButtonWidget(18, 18, "X", null);
             
             DisplayStringEntry dse = new DisplayStringEntry(owner, formatText, add, duplicate, reset, remove);
-            
-            add.setOnClick(dse::onAddClick);
-            duplicate.setOnClick(dse::onDuplicateClick);
-            reset.setOnClick(dse::onResetClick);
-            remove.setOnClick(dse::onRemoveClick);
     
-            add.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.add"));
-            duplicate.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.duplicate"));
-            reset.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.reset"));
-            remove.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.remove"));
-            
-            formatText.setMaxStringLength(32000);
-            
-            if (startingFormat != null)
-                formatText.setText(startingFormat);
-            
+            dse.setInitialFormatBoxText(startingFormat);
+    
             formatText.setTextChangedListener(dse::onFormatTextUpdate);
             formatText.setCursorPositionZero();
             
@@ -462,15 +584,28 @@ public class DisplayFormatPreferencesScreen extends Screen
                                    ButtonWidget duplicate, ButtonWidget reset, ButtonWidget remove)
         {
             super(owner, new Widget[]{formatBox, add, duplicate, reset, remove});
-            
+    
             this.formatBox = formatBox;
-            
+    
             this.add = add; this.duplicate = duplicate;
             this.reset = reset; this.remove = remove;
+    
+            this.add.setOnClick(this::onAddClick);
+            this.duplicate.setOnClick(this::onDuplicateClick);
+            this.reset.setOnClick(this::onResetClick);
+            this.remove.setOnClick(this::onRemoveClick);
+    
+            this.add.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.add"));
+            this.duplicate.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.duplicate"));
+            this.reset.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.reset"));
+            this.remove.setTooltipText(I18n.format(LANG_FORMAT + "displayFormatting.remove"));
+    
+            this.add.renderWithTextures = this.duplicate.renderWithTextures =
+            this.reset.renderWithTextures = this.remove.renderWithTextures = false;
             
-            this.startingText = formatBox.getText();
+            this.formatBox.setMaxStringLength(32000);
             
-            this.formatBox.setPosOffset(0, 4);
+            this.formatBox.setPosOffset(0, 3);
             this.formatBox.setEnableBackgroundDrawing(false);
         }
         
@@ -503,6 +638,49 @@ public class DisplayFormatPreferencesScreen extends Screen
             ((DisplayStringList)super.rowList).remove(this);
             return true;
         }
+    
+    
+    
+    
+        public String getFormatBoxText() {
+            return this.formatBox.getText();
+        }
+        private void setInitialFormatBoxText(String text)
+        {
+            if (text == null)
+            {
+                this.startingText = "";
+            }
+            else
+            {
+                this.startingText = unapplyExtraFormats(text);
+                this.formatBox.setText(this.startingText);
+            }
+        }
+        public String getFormatBoxParsedText() {
+            return applyExtraFormats(this.getFormatBoxText());
+        }
+    
+        public static String applyExtraFormats(String text)
+        {
+            for (char c : TextUtility.CHAT_COLORS_AND_FORMATS)
+            {
+                text = text.replaceAll("(?<!&)&"+c, "§"+c);
+                text = text.replaceAll("&&"+c, "&"+c);
+            }
+        
+            return text;
+        }
+        public static String unapplyExtraFormats(String text)
+        {
+            for (char c : TextUtility.CHAT_COLORS_AND_FORMATS)
+            {
+                text = text.replaceAll("&"+c, "&&"+c);
+                text = text.replaceAll("§"+c, "&"+c);
+            }
+            
+            return text;
+        }
         
         
         
@@ -513,30 +691,34 @@ public class DisplayFormatPreferencesScreen extends Screen
         {
             LineInfoCache[] linesMade = MineplexExpHudClient.getInstance().getExpHud().attemptDisplayFormattingS(newText, false);
             boolean isValidFormatting = linesMade != null && linesMade.length > 0;
-            
+    
             this.formatBox.setTextColor(isValidFormatting ? 14737632 : 0xFF8888);
             
-            int textColor = isValidFormatting ? 0x00000000 : 0xFF8888;
+            int textColor = isValidFormatting ? 0xFFFFFF : 0xFF8888;
             
-            this.add.packedFGColour = textColor;
-            this.reset.packedFGColour = textColor;
-            this.duplicate.packedFGColour = textColor;
-            this.remove.packedFGColour = textColor;
+            this.add.textColor = textColor;
+            this.reset.textColor = textColor;
+            this.duplicate.textColor = textColor;
+            this.remove.textColor = textColor;
             
             boolean validationChanged = isValidFormatting != this.validFormat;
             
             this.validFormat = isValidFormatting;
-            
+    
+            DisplayStringList dsl = ((DisplayStringList)super.rowList);
+
             if (validationChanged && doNotSkipValidationChange)
             {
-                DisplayStringList dsl = ((DisplayStringList)super.rowList);
-                
                 if (this.validFormat)
                     ++dsl.rowsWithValidFormats;
                 else
                     --dsl.rowsWithValidFormats;
                 
                 dsl.updateValidLines();
+            }
+            else
+            {
+                dsl.updatePreviewLines();
             }
         }
         
@@ -556,7 +738,7 @@ public class DisplayFormatPreferencesScreen extends Screen
             {
                 final int ab = (this.invalidFormatTimer % 20);
                 
-                Gui.drawRect(x, y - 1, x + listWidth - 6, y + slotHeight + 1,
+                Gui.drawRect(x - 1, y - 1, x + listWidth - 5, y + slotHeight + 3,
                         ((180 - ab * 8) << 24) | 0xFF0000);
                 
                 fillColor = ((200 - ab * 4) << 24) | 0x440000;
@@ -578,7 +760,7 @@ public class DisplayFormatPreferencesScreen extends Screen
         @Override
         public void updateWidgetLocations()
         {
-            int r = super.rowList.width - 98;
+            int r = super.rowList.width - 90;
             
             if (super.rowList.func_148135_f() > 0)
                 r -= 8;
@@ -587,9 +769,9 @@ public class DisplayFormatPreferencesScreen extends Screen
             this.formatBox.setW(r - 8);
             
             this.add.setX(r + 6);
-            this.duplicate.setX(r + 28);
-            this.reset.setX(r + 50);
-            this.remove.setX(r + 72);
+            this.duplicate.setX(r + 26);
+            this.reset.setX(r + 46);
+            this.remove.setX(r + 66);
         }
         
         @Override

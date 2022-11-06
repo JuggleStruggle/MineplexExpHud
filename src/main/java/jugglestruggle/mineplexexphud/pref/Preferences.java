@@ -1,5 +1,21 @@
 /*
- * Copyright (c) 2022.
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
  */
 
 package jugglestruggle.mineplexexphud.pref;
@@ -93,11 +109,23 @@ public final class Preferences
     // accessible through editing the configuration file
     public static String secondsFormat = "0.00";
     public static String progressPercentageFormat = "0.00";
+    public static String progressTo100PercentageFormat = "0.0000";
     /**
      * If the line provided matches the correct one, it will be used to show the progress
      * bar in the filler-background image. Set it to -1 to use none.
      */
     public static int lineToShowProgress = 0;
+    // /**
+    //  * If the line provided matches the correct one, it will be used to show the progression to
+    //  * level 100 as a progress bar in the filler-background image. Set it to -1 to use none.
+    //  */
+    // public static int lineToShowProgressToLevel100 = 0;
+    // /**
+    //  * If the line provided matches the correct one, it will be used to show the time remaining
+    //  * as a progress bar in the filler-background image. Set it to -1 to use none.
+    //  */
+    // public static int lineToShowTimeUntilNextUpdate = 0;
+
     
     //
     // HUD Positioning
@@ -110,14 +138,27 @@ public final class Preferences
     public static float yOffsetScreenPercentage = 0.0f;
     
     //
+    // HUD Edge
+    //
+    public static float leftBackgroundEdge = 3.0f;
+    public static float rightBackgroundEdge = 3.0f;
+    public static float topBackgroundEdge = 2.0f;
+    public static float bottomBackgroundEdge = 1.0f;
+    
+    //
     // Color Customization
     //
     public static int backgroundColor = 0x22000000;
     public static int borderColor = 0x22FFFFFF;
     public static int progressBackgroundColor = 0x22AAFF00;
     public static int progressBorderColor = 0x2200FFAA;
+    // public static int progressToLevel100BackgroundColor = 0x22AAFF00;
+    // public static int progressToLevel100BorderColor = 0x2200FFAA;
+    // public static int timeRemainingBackgroundColor = 0x22AAFF00;
+    // public static int timeRemainingBorderColor = 0x2200FFAA;
     public static int textColor = 0xFFFFFFFF;
     public static boolean drawTextWithShadow = true;
+    public static boolean showBorders = true;
     
     //
     // Stuff to keep on memory, but also saved to disk
@@ -134,7 +175,8 @@ public final class Preferences
     public static TimeUnitInfo expLevelGainedInSetTime = new TimeUnitInfo(JuggleTimeUnit.HOURS, 1L);
     /**
      * Renders the HUD after all the other HUD elements have been rendered. Otherwise,
-     * it will render it before them.
+     * it will render it before them. (This doesn't seem useful for Forge without mixins unless if
+     * one wants to add mixins, which isn't worth just to get it fixed)
      */
     public static boolean postRender = true;
     /**
@@ -156,8 +198,10 @@ public final class Preferences
      */
     public static boolean read(@Nonnull JsonObject data)
     {
-        if (data.entrySet().size() < 25)
-            return false;
+        // Removes this check as it might cause previous versions that had less preferences
+        // to be considered invalid
+        // if (data.entrySet().size() < 31)
+        //     return false;
 
         return Preferences.readSelf(data);
     }
@@ -181,8 +225,9 @@ public final class Preferences
         Preferences.worldChangeUseDelays = Configuration.get(data, "worldChangeUseDelays", true);
     
         Preferences.displayFormatting = Configuration.get(data, "displayFormatting", "");
-        Preferences.secondsFormat = Configuration.get(data, "secondsFormat", "#.##");
-        Preferences.progressPercentageFormat = Configuration.get(data, "progressPercentageFormat", "#.##");
+        Preferences.secondsFormat = Configuration.get(data, "secondsFormat", "0.00");
+        Preferences.progressPercentageFormat = Configuration.get(data, "progressPercentageFormat", "0.00");
+        Preferences.progressTo100PercentageFormat = Configuration.get(data, "progressTo100PercentageFormat", "0.0000");
         Preferences.lineToShowProgress = Configuration.get(data, "lineToShowProgress", 0, -1, Integer.MAX_VALUE);
     
         Preferences.hudTextPositioning = Configuration.get(data, "hudTextPositioning", HudPositioning.TopLeft);
@@ -196,6 +241,12 @@ public final class Preferences
         Preferences.progressBorderColor = Configuration.get(data, "progressBorderColor", 0x2200FFAA);
         Preferences.textColor = Configuration.get(data, "textColor", 0xFFFFFFFF);
         Preferences.drawTextWithShadow = Configuration.get(data, "drawTextWithShadow", true);
+        Preferences.showBorders = Configuration.get(data, "showBorders", true);
+    
+        Preferences.leftBackgroundEdge = Configuration.get(data, "leftBackgroundEdge", 3.0f);
+        Preferences.rightBackgroundEdge = Configuration.get(data, "rightBackgroundEdge", 3.0f);
+        Preferences.topBackgroundEdge = Configuration.get(data, "topBackgroundEdge", 2.0f);
+        Preferences.bottomBackgroundEdge = Configuration.get(data, "bottomBackgroundEdge", 1.0f);
         
         Preferences.showHud = Configuration.get(data, "showHud", true);
     
@@ -227,6 +278,7 @@ public final class Preferences
         data.addProperty("displayFormatting", Preferences.displayFormatting);
         data.addProperty("secondsFormat", Preferences.secondsFormat);
         data.addProperty("progressPercentageFormat", Preferences.progressPercentageFormat);
+        data.addProperty("progressTo100PercentageFormat", Preferences.progressTo100PercentageFormat);
         data.addProperty("lineToShowProgress", Preferences.lineToShowProgress);
     
         data.add("hudTextPositioning", Preferences.hudTextPositioning.write());
@@ -240,6 +292,12 @@ public final class Preferences
         data.addProperty("progressBorderColor", Preferences.progressBorderColor);
         data.addProperty("textColor", Preferences.textColor);
         data.addProperty("drawTextWithShadow", Preferences.drawTextWithShadow);
+        data.addProperty("showBorders", Preferences.showBorders);
+    
+        data.addProperty("leftBackgroundEdge", Preferences.leftBackgroundEdge);
+        data.addProperty("rightBackgroundEdge", Preferences.rightBackgroundEdge);
+        data.addProperty("topBackgroundEdge", Preferences.topBackgroundEdge);
+        data.addProperty("bottomBackgroundEdge", Preferences.bottomBackgroundEdge);
         
         data.addProperty("showHud", Preferences.showHud);
     

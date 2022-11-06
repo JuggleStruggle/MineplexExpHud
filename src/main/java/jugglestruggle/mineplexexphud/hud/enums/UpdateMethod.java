@@ -1,5 +1,21 @@
 /*
- * Copyright (c) 2022.
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
  */
 
 package jugglestruggle.mineplexexphud.hud.enums;
@@ -41,12 +57,19 @@ public enum UpdateMethod implements ElemFunction<UpdateMethod>
             case ON_WORLD_CHANGE:
             {
                 if (!Preferences.worldChangeUseDelays || !ov.worldChangeInitiatedDelay)
-                    return getLang().format(LANG_FORMAT + "updateMethod.on_world_change");
+                    return getLang().translate(LANG_FORMAT + "updateMethod.on_world_change");
             }
             case UNTIL_NEXT_MS_UPDATE:
             {
-                long off = ov.activeMillisUntilNextExpUpdate - System.currentTimeMillis();
-                return JuggleTimeUnit.SECONDS.format(ov.secondsFormat.format((double)off / 1000.0), false);
+                if (Preferences.expUpdateEnabled)
+                {
+                    long off = ov.activeMillisUntilNextExpUpdate - System.currentTimeMillis();
+                    return JuggleTimeUnit.SECONDS.format(ov.secondsFormat.format((double)off / 1000.0), false);
+                }
+                else
+                {
+                    return getLang().translate(LANG_FORMAT+"updateMethod.disabled");
+                }
             }
             
             default:
@@ -65,7 +88,7 @@ public enum UpdateMethod implements ElemFunction<UpdateMethod>
                 return Preferences.worldChangeUseDelays && ov.worldChangeInitiatedDelay;
             }
             case UNTIL_NEXT_MS_UPDATE: {
-                return true;
+                return Preferences.expUpdateEnabled;
             }
         }
     }

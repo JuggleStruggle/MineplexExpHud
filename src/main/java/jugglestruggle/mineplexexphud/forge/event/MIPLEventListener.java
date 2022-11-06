@@ -1,7 +1,25 @@
+/*
+ * MineplexExpHud: A mod which tracks the current
+ * EXP the user has on the Mineplex server.
+ * Copyright (C) 2022  JuggleStruggle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program.  If not, see
+ *  <https://www.gnu.org/licenses/>.
+ */
+
 package jugglestruggle.mineplexexphud.forge.event;
 
-import jugglestruggle.mineplexexphud.MineplexExpHudClient;
-import jugglestruggle.mineplexexphud.forge.ForgeExpHud;
 import jugglestruggle.mineplexexphud.forge.ForgeRenderContext;
 import jugglestruggle.mineplexexphud.forge.MineplexExpHudClientForge;
 import jugglestruggle.mineplexexphud.forge.gui.screen.HudEditorScreen;
@@ -14,7 +32,6 @@ import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 public class MIPLEventListener
@@ -22,16 +39,14 @@ public class MIPLEventListener
     @SubscribeEvent
     public void onPreGameHudRender(RenderGameOverlayEvent.Pre e)
     {
-        if (e.type == RenderGameOverlayEvent.ElementType.ALL && !Preferences.postRender) {
+        if (!Preferences.postRender && e.type == RenderGameOverlayEvent.ElementType.ALL)
             renderSelfHud(e.resolution, e.partialTicks);
-        }
     }
     @SubscribeEvent
     public void onPostGameHudRender(RenderGameOverlayEvent.Post e)
     {
-        if (e.type == RenderGameOverlayEvent.ElementType.ALL && Preferences.postRender) {
+        if (Preferences.postRender && e.type == RenderGameOverlayEvent.ElementType.ALL)
             renderSelfHud(e.resolution, e.partialTicks);
-        }
     }
     
     @SubscribeEvent
@@ -50,12 +65,6 @@ public class MIPLEventListener
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load e) {
         MineplexExpHudClientForge.getForgeInstance().getExpHud().onWorldLoad();
-    }
-    
-    @SubscribeEvent
-    public void onKeyInputEvent(InputEvent.KeyInputEvent e)
-    {
-    
     }
     
     @SubscribeEvent
