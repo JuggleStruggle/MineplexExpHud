@@ -830,7 +830,7 @@ public abstract class AbstractExpHud
                 this.totalLevelsGainedInSetTime, this.totalExpGainedInSetTime,
                 
                 this.totalExpAccumulated,
-                this.progressTo100PercentageFormat.format(this.percentageUntilLevelOneHundred)
+                this.progressTo100PercentageFormat.format(this.percentageUntilLevelOneHundred * 100.0f)
             );
             
             final String[] lines;
