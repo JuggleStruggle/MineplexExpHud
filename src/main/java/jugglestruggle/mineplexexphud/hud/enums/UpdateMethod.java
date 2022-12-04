@@ -56,14 +56,23 @@ public enum UpdateMethod implements ElemFunction<UpdateMethod>
         {
             case ON_WORLD_CHANGE:
             {
-                if (!Preferences.worldChangeUseDelays || !ov.worldChangeInitiatedDelay)
+                if (onWorldChangeExpSwallow(ov))
+                {
+                    long off = ov.getMillisUntilExpMessageSwallowDone() - System.currentTimeMillis();
+                    
+                    return getLang().format(LANG_FORMAT + "expUpdate.waitingForExpMessage",
+                            JuggleTimeUnit.SECONDS.format(ov.secondsFormat.format((double)off / 1000.0), false));
+                }
+                else if (!Preferences.worldChangeUseDelays || !ov.worldChangeInitiatedDelay)
+                {
                     return getLang().translate(LANG_FORMAT + "updateMethod.on_world_change");
+                }
             }
             case UNTIL_NEXT_MS_UPDATE:
             {
                 if (Preferences.expUpdateEnabled)
                 {
-                    long off = ov.activeMillisUntilNextExpUpdate - System.currentTimeMillis();
+                    long off = ov.getActiveMillisUntilNextExpUpdate() - System.currentTimeMillis();
                     return JuggleTimeUnit.SECONDS.format(ov.secondsFormat.format((double)off / 1000.0), false);
                 }
                 else
@@ -85,12 +94,20 @@ public enum UpdateMethod implements ElemFunction<UpdateMethod>
                 return false;
             
             case ON_WORLD_CHANGE: {
-                return Preferences.worldChangeUseDelays && ov.worldChangeInitiatedDelay;
+                return (Preferences.worldChangeUseDelays && ov.worldChangeInitiatedDelay) || onWorldChangeExpSwallow(ov);
+//                return Preferences.worldChangeUseDelays && ov.worldChangeInitiatedDelay;
             }
             case UNTIL_NEXT_MS_UPDATE: {
                 return Preferences.expUpdateEnabled;
             }
         }
+    }
+    
+    private static boolean onWorldChangeExpSwallow(AbstractExpHud ov)
+    {
+        return ov.isWaitingForExpMessage() && ov.getMillisUntilExpMessageSwallowDone() >= 0L;
+//        return Preferences.accuracy == AccuracyMode.ACCOUNT_FOR_ALL_LINES &&
+//                ov.isWaitingForExpMessage() && ov.getMillisUntilExpMessageSwallowDone() >= 0L;
     }
     
     public static String getFormattedText(UpdateMethod a)

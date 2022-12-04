@@ -26,7 +26,6 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -166,6 +165,18 @@ public class CyclingButtonWidget<V> extends ButtonWidget
         if (super.superMousePressed(mouseX, mouseY))
         {
             this.cycleByOne(!GuiScreen.isShiftKeyDown());
+            return true;
+        }
+    
+        return false;
+    }
+    
+    @Override
+    public boolean onMouseDown(Minecraft client, int mouseX, int mouseY, int button)
+    {
+        if (super.superMousePressed(mouseX, mouseY))
+        {
+            this.cycleByOne(!(button == 1 || GuiScreen.isShiftKeyDown()));
             return true;
         }
         

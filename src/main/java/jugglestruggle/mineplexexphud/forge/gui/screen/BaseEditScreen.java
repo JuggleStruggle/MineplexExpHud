@@ -104,4 +104,13 @@ public abstract class BaseEditScreen extends Screen
         return CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+format), value, (byte)1)
                 .setPostValueChangeListener(onChanged);
     }
+    
+    protected static CyclingButtonWidget<Boolean> of(String format, String tooltipWithFormat, boolean value,
+                                                     Consumer<CyclingButtonWidget<Boolean>> onChanged)
+    {
+        CyclingButtonWidget<Boolean> b = of(format, value, onChanged);
+        b.setTooltipText(I18n.format(LANG_FORMAT + format + "." + tooltipWithFormat));
+        
+        return b;
+    }
 }

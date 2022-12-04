@@ -448,7 +448,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
             
             if (Preferences.displayFormatting.trim().isEmpty())
             {
-                super.entries.add(DisplayStringEntry.of(this, null));
+                super.entries.add(DisplayStringEntry.of(this, null, false));
             }
             else
             {
@@ -459,7 +459,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
                     if (line.isEmpty())
                         continue;
 
-                    super.entries.add(DisplayStringEntry.of(this, line));
+                    super.entries.add(DisplayStringEntry.of(this, line, false));
                 }
             }
             
@@ -468,11 +468,11 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
                     ++this.rowsWithValidFormats;
         }
         
-        void add(DisplayStringEntry reference, String startingFormat)
+        void add(DisplayStringEntry reference, String startingFormat, boolean fromDuplicate)
         {
             int index = super.entries.indexOf(reference);
             
-            DisplayStringEntry dse = DisplayStringEntry.of(this, startingFormat);
+            DisplayStringEntry dse = DisplayStringEntry.of(this, startingFormat, fromDuplicate);
             
             if (index == -1 || super.entries.isEmpty())
                 super.entries.add(dse);
@@ -509,7 +509,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
             }
             
             if (super.entries.isEmpty())
-                this.add(null, null);
+                this.add(null, null, false);
             else
             {
                 this.updateValidLines();
@@ -549,7 +549,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
     }
     static class DisplayStringEntry extends WidgetRowListWidget.WidgetEntry<Widget>
     {
-        public static DisplayStringEntry of(DisplayStringList owner, String startingFormat)
+        public static DisplayStringEntry of(DisplayStringList owner, String startingFormat, boolean fromDuplicate)
         {
             TextWidget formatText = new TextWidget(owner.getClient().fontRendererObj, 144, 12);
             ButtonWidget add       = new ButtonWidget(18, 18, "+", null);
@@ -559,7 +559,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
             
             DisplayStringEntry dse = new DisplayStringEntry(owner, formatText, add, duplicate, reset, remove);
     
-            dse.setInitialFormatBoxText(startingFormat);
+            dse.setInitialFormatBoxText(startingFormat, fromDuplicate);
     
             formatText.setTextChangedListener(dse::onFormatTextUpdate);
             formatText.setCursorPositionZero();
@@ -611,7 +611,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
         
         public boolean onAddClick(ButtonWidget b)
         {
-            ((DisplayStringList)super.rowList).add(this, null);
+            ((DisplayStringList)super.rowList).add(this, null, false);
             return true;
         }
         
@@ -620,7 +620,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
             String selText = this.formatBox.getSelectedText();
             
             ((DisplayStringList)super.rowList).add(this,
-                    selText.trim().isEmpty() ? this.formatBox.getText() : selText);
+                    selText.trim().isEmpty() ? this.formatBox.getText() : selText, true);
             
             return true;
         }
@@ -645,7 +645,8 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
         public String getFormatBoxText() {
             return this.formatBox.getText();
         }
-        private void setInitialFormatBoxText(String text)
+        
+        private void setInitialFormatBoxText(String text, boolean avoidUnapplyingFormats)
         {
             if (text == null)
             {
@@ -653,7 +654,7 @@ public class DisplayFormatPreferencesScreen extends BaseEditScreen
             }
             else
             {
-                this.startingText = unapplyExtraFormats(text);
+                this.startingText = avoidUnapplyingFormats ? text : unapplyExtraFormats(text);
                 this.formatBox.setText(this.startingText);
             }
         }

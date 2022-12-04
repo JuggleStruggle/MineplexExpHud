@@ -79,8 +79,8 @@ public class NumericWidget extends AbstractMultiWidget
         this.numbersWidget.setText(this.includeDecimals ? Double.toString(value) : Long.toString((long)value));
         this.numbersWidget.setValidator(this::isNumericTextValid);
         this.numbersWidget.setTextChangedListener(this::applyNewTextAsValue);
-        
         this.numbersWidget.setTooltipText(tooltipText);
+        
         this.minusButton.setTooltipText(I18n.format(LANG_FORMAT + "numerics.tooltipFormatForButtons",
                 tooltipText, I18n.format(LANG_FORMAT + "numerics.tooltipSubtract")));
         this.plusButton.setTooltipText(I18n.format(LANG_FORMAT + "numerics.tooltipFormatForButtons",

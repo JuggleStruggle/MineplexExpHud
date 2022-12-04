@@ -37,7 +37,7 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 public class MineplexExpHudClientForge extends MineplexExpHudClient
 {
     public static final String MOD_ID = "mineplexexphud";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.1.1";
     
     public static KeyBinding showHudBinding;
     public static KeyBinding showPrefsBinding;

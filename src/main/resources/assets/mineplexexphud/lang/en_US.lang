@@ -15,12 +15,14 @@ jugglestruggle.miplexp.postRender=Render Last
 jugglestruggle.miplexp.worldChangeUseDelays=Delay on World Change
 jugglestruggle.miplexp.showHud=Show HUD
 jugglestruggle.miplexp.millisUntilNextExpUpdate=Milliseconds Until Next EXP Update\n(1000 ms -> 1 second)\n\nIMPORTANT!\nThis updates in real time!
-jugglestruggle.miplexp.worksLocally=Works Offline
-jugglestruggle.miplexp.worksLocally.notimplemented=There are no server checks implemented
+jugglestruggle.miplexp.onlyOnMineplex=Check Mineplex IPs
+jugglestruggle.miplexp.onlyOnMineplex.description=Checks if this is a Mineplex server so\nthat it can start sending EXP updates.
 jugglestruggle.miplexp.ignoreEmptyExp=Ignore Empty EXP
 jugglestruggle.miplexp.ignoreEmptyExp.description=To ignore "empty EXPs", it must fall\nunder one of the options:\n\n- Level 0's fresh statistics\n- Empty level statistics (all 0s)
 jugglestruggle.miplexp.expGainedInSetTime=Set time to reset "Set Time for\nGained EXPs and Levels"
 jugglestruggle.miplexp.screenPositioning=Screen Area
+jugglestruggle.miplexp.showHudOnlyOnMineplex=HUD if Server Matches
+jugglestruggle.miplexp.showHudOnlyOnMineplex.description=Shows the HUD only if you're on\nMineplex server IPs. This requires\nthat "Check Mineplex IPs" is set.
 
 # Accuracy
 jugglestruggle.miplexp.accuracy=Accuracy
@@ -34,6 +36,9 @@ jugglestruggle.miplexp.updateMethod=Update
 jugglestruggle.miplexp.updateMethod.on_world_change=World Change
 jugglestruggle.miplexp.updateMethod.until_next_ms_update=Set Intervals
 jugglestruggle.miplexp.updateMethod.disabled=<exp updating is disabled>
+
+# Miscellaneous
+jugglestruggle.miplexp.expUpdate.waitingForExpMessage=%1$s for exp check
 
 # Display Formatting Screen
 jugglestruggle.miplexp.displayFormatting=Display Formatting

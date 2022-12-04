@@ -27,6 +27,8 @@ import jugglestruggle.mineplexexphud.forge.gui.screen.PreferencesScreen;
 import jugglestruggle.mineplexexphud.pref.Preferences;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -63,8 +65,18 @@ public class MIPLEventListener
     }
     
     @SubscribeEvent
-    public void onWorldLoad(WorldEvent.Load e) {
-        MineplexExpHudClientForge.getForgeInstance().getExpHud().onWorldLoad();
+    public void onWorldLoad(WorldEvent.Load e)
+    {
+        // Avoid double-calls if the world instance is not a client world
+        // (since we are also dealing with server worlds)
+        if (!(e.world instanceof WorldClient))
+            return;
+            
+        Minecraft client = Minecraft.getMinecraft();
+        ServerData sd = client.isIntegratedServerRunning() ? null : client.getCurrentServerData();
+        
+        MineplexExpHudClientForge.getForgeInstance().getExpHud().onWorldLoad
+                ((sd == null || sd.serverIP == null) ? null : sd.serverIP);
     }
     
     @SubscribeEvent
@@ -95,7 +107,8 @@ public class MIPLEventListener
     private static void renderSelfHud(ScaledResolution sr, float delta)
     {
         if (Preferences.showHud && (Preferences.showWhileDebugScreenActive ||
-                !Minecraft.getMinecraft().gameSettings.showDebugInfo))
+            !Minecraft.getMinecraft().gameSettings.showDebugInfo) && (Preferences.expUpdatesBesidesMineplex ||
+            !Preferences.showHudOnlyOnMineplex || MineplexExpHudClientForge.getForgeExpHud().isOnServer()))
         {
             renderHud(sr, delta);
         }

@@ -42,9 +42,26 @@ public final class Preferences
     //
     // General
     //
+    /**
+     * Enables the ability to update the EXP. Otherwise, it is assumed to be a snapshot
+     * of the user's EXP.
+     *
+     * <p> All what this does is simply send a message to the server, namely {@code /xp},
+     * so that it works.
+     */
     public static boolean expUpdateEnabled = true;
+    /**
+     * This allows the mod to work besides Mineplex, which has no point unless your goal
+     * is to test it.
+     *
+     * <p> Doesn't do anything unless {@link #expUpdateEnabled} is set to {@code true}.
+     */
+    public static boolean expUpdatesBesidesMineplex = false;
+    /** See {@link AccuracyMode}'s description! */
     public static AccuracyMode accuracy = AccuracyMode.ACCOUNT_FOR_ALL_LINES;
+    /** See {@link UpdateMethod}'s description! */
     public static UpdateMethod updateMethod = UpdateMethod.ON_WORLD_CHANGE;
+    /** See {@link ExpTotalsCacheMethodCheck}'s description! */
     public static ExpTotalsCacheMethodCheck expTotalsCacheMethodCheck = ExpTotalsCacheMethodCheck.LISTEN_TO_CHAT_MESSAGE;
     
     /**
@@ -125,6 +142,15 @@ public final class Preferences
     //  * as a progress bar in the filler-background image. Set it to -1 to use none.
     //  */
     // public static int lineToShowTimeUntilNextUpdate = 0;
+    /** Shows the HUD in-game. */
+    public static boolean showHud = true;
+    /**
+     * Shows the HUD if one's playing on Mineplex.
+     *
+     * <p> This requires that {@link #showHud} be set to {@code true}
+     * and {@link #expUpdatesBesidesMineplex} to {@code false}.
+     */
+    public static boolean showHudOnlyOnMineplex = true;
 
     
     //
@@ -163,7 +189,7 @@ public final class Preferences
     //
     // Stuff to keep on memory, but also saved to disk
     //
-    public static boolean showHud = true;
+    // <no prefs>
     
     
     //
@@ -198,7 +224,7 @@ public final class Preferences
      */
     public static boolean read(@Nonnull JsonObject data)
     {
-        // Removes this check as it might cause previous versions that had less preferences
+        // Removes this check as it might cause previous mod versions that had less preferences
         // to be considered invalid
         // if (data.entrySet().size() < 31)
         //     return false;
@@ -216,6 +242,7 @@ public final class Preferences
     private static boolean readSelf(@Nullable JsonObject data)
     {
         Preferences.expUpdateEnabled = Configuration.get(data, "expUpdateEnabled", true);
+        Preferences.expUpdatesBesidesMineplex = Configuration.get(data, "expUpdatesBesidesMineplex", false);
         Preferences.accuracy = Configuration.get(data, "accuracy", AccuracyMode.ACCOUNT_FOR_ALL_LINES);
         Preferences.updateMethod = Configuration.get(data, "updateMethod", UpdateMethod.ON_WORLD_CHANGE);
         Preferences.expTotalsCacheMethodCheck = Configuration.get(data, "expTotalsCacheMethodCheck", ExpTotalsCacheMethodCheck.LISTEN_TO_CHAT_MESSAGE);
@@ -242,13 +269,14 @@ public final class Preferences
         Preferences.textColor = Configuration.get(data, "textColor", 0xFFFFFFFF);
         Preferences.drawTextWithShadow = Configuration.get(data, "drawTextWithShadow", true);
         Preferences.showBorders = Configuration.get(data, "showBorders", true);
+        Preferences.showHud = Configuration.get(data, "showHud", true);
+        Preferences.showHudOnlyOnMineplex = Configuration.get(data, "showHudOnlyOnMineplex", true);
     
         Preferences.leftBackgroundEdge = Configuration.get(data, "leftBackgroundEdge", 3.0f);
         Preferences.rightBackgroundEdge = Configuration.get(data, "rightBackgroundEdge", 3.0f);
         Preferences.topBackgroundEdge = Configuration.get(data, "topBackgroundEdge", 2.0f);
         Preferences.bottomBackgroundEdge = Configuration.get(data, "bottomBackgroundEdge", 1.0f);
         
-        Preferences.showHud = Configuration.get(data, "showHud", true);
     
         Preferences.expLevelGainedInSetTime = Configuration.get(data, "expLevelGainedInSetTime", new TimeUnitInfo(JuggleTimeUnit.HOURS, 1L));
         Preferences.postRender = Configuration.get(data, "postRender", true);
@@ -267,6 +295,7 @@ public final class Preferences
     public static boolean write(JsonObject data)
     {
         data.addProperty("expUpdateEnabled", Preferences.expUpdateEnabled);
+        data.addProperty("expUpdatesBesidesMineplex", Preferences.expUpdatesBesidesMineplex);
         data.add("accuracy", Preferences.accuracy.write());
         data.add("updateMethod", Preferences.updateMethod.write());
         data.add("expTotalsCacheMethodCheck", Preferences.expTotalsCacheMethodCheck.write());
@@ -293,13 +322,13 @@ public final class Preferences
         data.addProperty("textColor", Preferences.textColor);
         data.addProperty("drawTextWithShadow", Preferences.drawTextWithShadow);
         data.addProperty("showBorders", Preferences.showBorders);
+        data.addProperty("showHud", Preferences.showHud);
+        data.addProperty("showHudOnlyOnMineplex", Preferences.showHudOnlyOnMineplex);
     
         data.addProperty("leftBackgroundEdge", Preferences.leftBackgroundEdge);
         data.addProperty("rightBackgroundEdge", Preferences.rightBackgroundEdge);
         data.addProperty("topBackgroundEdge", Preferences.topBackgroundEdge);
         data.addProperty("bottomBackgroundEdge", Preferences.bottomBackgroundEdge);
-        
-        data.addProperty("showHud", Preferences.showHud);
     
         data.add("expLevelGainedInSetTime", Preferences.expLevelGainedInSetTime.write());
         data.addProperty("postRender", Preferences.postRender);

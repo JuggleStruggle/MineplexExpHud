@@ -70,39 +70,27 @@ public class PreferencesScreen extends BaseEditScreen
         prefs.add(of("hudEditor", this::onModifyHudClick));
         prefs.add(of("hudEdges", this::onModifyHudEdgesClick));
     
-        // EXP Update Enabled & Accuracy
-        CyclingButtonWidget<Boolean> cbw = CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"expUpdateEnabled"),
-                Preferences.expUpdateEnabled, (byte)1).setValueChangeListener(this::onExpUpdateEnabledUpdate);
-        cbw.setTooltipText(I18n.format(LANG_FORMAT+"expUpdateEnabled.description"));
-        prefs.add(cbw);
-        prefs.add(new CyclingButtonWidget<>(150, 20, I18n.format(LANG_FORMAT+"accuracy"),
-                Preferences.accuracy, ImmutableList.copyOf(AccuracyMode.values()), AccuracyMode::getFormattedText,
-                AccuracyMode::getFormattedTextDesc).setValueChangeListener(this::onAcurracyTypeUpdate));
+        // EXP Update Enabled & Only Update EXPs if on Mineplex
+        prefs.add(of("expUpdateEnabled", "description", Preferences.expUpdateEnabled, this::onExpUpdateEnabledUpdate));
+        prefs.add(of("onlyOnMineplex", "description", !Preferences.expUpdatesBesidesMineplex, this::onExpUpdatesOnlyOnMineplexUpdate));
     
         // Update Method & On World Change: Use Delays
         prefs.add(new CyclingButtonWidget<>(150, 20, I18n.format(LANG_FORMAT+"updateMethod"),
                 Preferences.updateMethod, ImmutableList.copyOf(UpdateMethod.values()), UpdateMethod::getFormattedText)
                 .setValueChangeListener(this::onExpUpdateMethodUpdate));
-        prefs.add(CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"worldChangeUseDelays"),
-                Preferences.worldChangeUseDelays, (byte)1).setValueChangeListener(this::onWorldChangeUseDelaysUpdate));
+        prefs.add(of("worldChangeUseDelays", Preferences.worldChangeUseDelays, this::onWorldChangeUseDelaysUpdate));
     
-        // Works Offline & Ignore Empty EXP
-        cbw = CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"worksLocally"), true, (byte)1);
-        cbw.setInteractable(false);
-        cbw.setTooltipText(I18n.format(LANG_FORMAT+"worksLocally.notimplemented"));
-        prefs.add(cbw);
-        cbw = CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"ignoreEmptyExp"),
-                Preferences.ignoreEmptyExp, (byte)1).setValueChangeListener(this::onIgnoreEmptyExpUpdate);
-        cbw.setTooltipText(I18n.format(LANG_FORMAT+"ignoreEmptyExp.description"));
-        prefs.add(cbw);
+        // Accuracy & Ignore Empty EXP
+        prefs.add(new CyclingButtonWidget<>(150, 20, I18n.format(LANG_FORMAT+"accuracy"),
+                Preferences.accuracy, ImmutableList.copyOf(AccuracyMode.values()), AccuracyMode::getFormattedText,
+                AccuracyMode::getFormattedTextDesc).setValueChangeListener(this::onAcurracyTypeUpdate));
+        prefs.add(of("ignoreEmptyExp", "description", Preferences.ignoreEmptyExp, this::onIgnoreEmptyExpUpdate));
     
-        // Post Render & Show While Debug Screen's Active
-        prefs.add(CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"postRender"),
-                Preferences.postRender, (byte)1).setValueChangeListener(this::onShowInPostRenderUpdate));
-        prefs.add(CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"showWhileDebugScreenActive"),
-                Preferences.showWhileDebugScreenActive, (byte)1).setValueChangeListener(this::onShowWhileDebugScreenActiveUpdate));
-        
-        // Millis Until Next EXP Update & EXP Gained in Set Time
+        // Show HUD Only on Mineplex & Show While Debug Screen's Active
+        prefs.add(of("showHudOnlyOnMineplex", "description", Preferences.showHudOnlyOnMineplex, this::onShowHudOnlyOnMineplexUpdate));
+        prefs.add(of("showWhileDebugScreenActive", Preferences.showWhileDebugScreenActive, this::onShowWhileDebugScreenActiveUpdate));
+    
+        // Millis Until Next EXP Update && EXP Gained in Set Time
         prefs.add(new NumericWidget(this.mc.fontRendererObj, 150, 20, Preferences.millisUntilNextExpUpdate,
                 1000L, Long.MAX_VALUE, I18n.format(LANG_FORMAT+"millisUntilNextExpUpdate"))
                 .setValueChangeListener(this::onMillisUntilNextExpUpdateUpdated));
@@ -110,15 +98,17 @@ public class PreferencesScreen extends BaseEditScreen
                 Preferences.expLevelGainedInSetTime, I18n.format(LANG_FORMAT+"expGainedInSetTime"));
         tui.setPostOnValueChanged(this::onExpGainedInSetTimeValueChanged);
         prefs.add(tui);
-        
-        
+    
+        // Post Render
+        prefs.add(of("postRender", Preferences.postRender, this::onShowInPostRenderUpdate));
+    
+    
         this.prefsList = new WidgetRowListWidget<>(this, 0, 0, 0, 0,22, prefs.toArray(new Widget[0]));
-        
+    
         super.listWidgets = new ArrayList<>(1);
         super.listWidgets.add(this.prefsList);
-        
-        this.showHudButton = CyclingButtonWidget.bool(150, 20, I18n.format(LANG_FORMAT+"showHud"),
-                Preferences.showHud, (byte)1).setValueChangeListener(this::onShowHudUpdate);
+    
+        this.showHudButton = of("showHud", Preferences.showHud, this::onShowHudUpdate);
         
         super.widgets.add(this.showHudButton);
     }
@@ -146,33 +136,43 @@ public class PreferencesScreen extends BaseEditScreen
         super.onGuiClosed();
     }
     
-    private boolean onExpUpdateEnabledUpdate(CyclingButtonWidget<Boolean> b, Boolean v)
+    private void onExpUpdateEnabledUpdate(CyclingButtonWidget<Boolean> b)
     {
-        Preferences.expUpdateEnabled = v; MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
-        return true;
+        Preferences.expUpdateEnabled = b.getValue();
+        MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
     }
-    private boolean onWorldChangeUseDelaysUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
-        Preferences.worldChangeUseDelays = v; return true;
+    private void onExpUpdatesOnlyOnMineplexUpdate(CyclingButtonWidget<Boolean> b)
+    {
+        Preferences.expUpdatesBesidesMineplex = !b.getValue();
+        MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
     }
-    private boolean onShowHudUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
-        Preferences.showHud = v; return true;
+    private void onWorldChangeUseDelaysUpdate(CyclingButtonWidget<Boolean> b) {
+        Preferences.worldChangeUseDelays = b.getValue();
     }
-    private boolean onShowInPostRenderUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
-        Preferences.postRender = v; return true;
+    private void onShowHudUpdate(CyclingButtonWidget<Boolean> b) {
+        Preferences.showHud = b.getValue();
     }
-    private boolean onShowWhileDebugScreenActiveUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
-        Preferences.showWhileDebugScreenActive = v; return true;
+    private void onShowHudOnlyOnMineplexUpdate(CyclingButtonWidget<Boolean> b) {
+        Preferences.showHudOnlyOnMineplex = b.getValue();
+    }
+    private void onShowWhileDebugScreenActiveUpdate(CyclingButtonWidget<Boolean> b) {
+        Preferences.showWhileDebugScreenActive = b.getValue();
+    }
+    private void onShowInPostRenderUpdate(CyclingButtonWidget<Boolean> b) {
+        Preferences.postRender = b.getValue();
     }
     private boolean onAcurracyTypeUpdate(CyclingButtonWidget<AccuracyMode> b, AccuracyMode v) {
         Preferences.accuracy = v; return true;
     }
     private boolean onExpUpdateMethodUpdate(CyclingButtonWidget<UpdateMethod> b, UpdateMethod v)
     {
-        Preferences.updateMethod = v; MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
+        Preferences.updateMethod = v;
+        MineplexExpHudClientForge.getForgeExpHud().rebuildDisplayCacheInfo();
+        
         return true;
     }
-    private boolean onIgnoreEmptyExpUpdate(CyclingButtonWidget<Boolean> b, Boolean v) {
-        Preferences.ignoreEmptyExp = v; return true;
+    private void onIgnoreEmptyExpUpdate(CyclingButtonWidget<Boolean> b) {
+        Preferences.ignoreEmptyExp = b.getValue();
     }
     private boolean onModifyDisplayFormatClick(ButtonWidget b) {
         this.mc.displayGuiScreen(new DisplayFormatPreferencesScreen(this)); return true;

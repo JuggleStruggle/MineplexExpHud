@@ -40,7 +40,7 @@ public final class ExpStatics
     
     /**
      * Mineplex is at least known to use 3 EXP display formats:
-     * - When the game ends (if it's public; not community, player or staff hosted)
+     * - When the game ends: provided it's public (community, player or staff hosted don't give out any)
      * - When collecting rewards from Carl the Creeper
      * - When collecting rewards from a mission
      *

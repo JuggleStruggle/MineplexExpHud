@@ -27,6 +27,7 @@ import jugglestruggle.mineplexexphud.hud.enums.UpdateMethod;
 import jugglestruggle.mineplexexphud.hud.info.ExpCacheState;
 import jugglestruggle.mineplexexphud.hud.info.LineInfoCache;
 import jugglestruggle.mineplexexphud.pref.Preferences;
+import jugglestruggle.mineplexexphud.util.MineplexIPUtils;
 import jugglestruggle.util.ColorUtility;
 import jugglestruggle.util.JuggleTimeUnit;
 
@@ -55,7 +56,7 @@ public abstract class AbstractExpHud
      * or {@link UpdateMethod#ON_WORLD_CHANGE} if {@link Preferences#worldChangeUseDelays} is set
      * to {@code true}.
      */
-    public long activeMillisUntilNextExpUpdate = 0L;
+    long activeMillisUntilNextExpUpdate = 0L;
     /**
      * Only has an effect if {@link Preferences#expLevelGainedInSetTime} is in use.
      */
@@ -180,6 +181,9 @@ public abstract class AbstractExpHud
      * "necessary progress".
      */
     protected byte currentLine;
+    
+    /** Is the user on the Mineplex Network(tm)? */
+    protected boolean isOnMineplexServer = false;
 
     public DecimalFormat secondsFormat;
     public DecimalFormat progressPercentageFormat;
@@ -343,7 +347,7 @@ public abstract class AbstractExpHud
             this.endPerformingExpUpdate(false);
         }
     
-        if (Preferences.expUpdateEnabled)
+        if (this.shouldUpdateExps())
         {
             switch (Preferences.updateMethod)
             {
@@ -448,7 +452,7 @@ public abstract class AbstractExpHud
         }
         
         
-        if (!Preferences.expUpdateEnabled || Preferences.expTotalsCacheMethodCheck != ExpTotalsCacheMethodCheck.LISTEN_TO_CHAT_MESSAGE)
+        if (!this.shouldUpdateExps() || Preferences.expTotalsCacheMethodCheck != ExpTotalsCacheMethodCheck.LISTEN_TO_CHAT_MESSAGE)
             return false;
         
         // Find any sign of game results (or EXP pattern matching for that matter)
@@ -478,9 +482,14 @@ public abstract class AbstractExpHud
         
         return false;
     }
-    public void onWorldLoad()
+    public void onWorldLoad(String currentServerIp)
     {
-        if (!Preferences.expUpdateEnabled || Preferences.updateMethod != UpdateMethod.ON_WORLD_CHANGE)
+        // Note: This should be done on server join/leave rather than rely on world load/unload due to the fact
+        // that you still can be on the same server when changing worlds and given that world unloads are a thing,
+        // it should only be used once the user actually leaves the server or goes for another one
+        this.isOnMineplexServer = MineplexIPUtils.isValidMineplexIpOrDns(currentServerIp);
+        
+        if (!this.shouldUpdateExps() || Preferences.updateMethod != UpdateMethod.ON_WORLD_CHANGE)
             return;
         
         if (Preferences.worldChangeUseDelays)
@@ -491,6 +500,17 @@ public abstract class AbstractExpHud
         else
             this.performExpUpdate();
     }
+    /*
+    // Formerly used when the world is unloaded but Forge first always calls world load then unloads the old
+    // world which causes server checks to always return false as a result
+    public void onWorldExit()
+    {
+         this.isOnMineplexServer = false;
+        
+        if (this.waitingForExpMessage)
+            this.endPerformingExpUpdate(false);
+    }
+     */
     
     public void delayActiveMillisUntilNextExpUpdate() {
         this.activeMillisUntilNextExpUpdate = System.currentTimeMillis() + Preferences.millisUntilNextExpUpdate;
@@ -631,7 +651,6 @@ public abstract class AbstractExpHud
     
     
     
-    
     //
     // /xp Pattern Matching
     //
@@ -691,21 +710,22 @@ public abstract class AbstractExpHud
     //
     void performExpUpdate()
     {
+        this.worldChangeInitiatedDelay = false;
+    
         if (this.avoidExecuting())
             return;
-        
-        final long millis = System.currentTimeMillis() ;
+    
+        final long millis = System.currentTimeMillis();
         boolean doNotAvoidChatSending = true;
-        
+    
         if (this.waitingForExpMessage && this.millisUntilExpMessageSwallowDone > millis)
             doNotAvoidChatSending = false;
-        
+    
         if (doNotAvoidChatSending)
             this.sendChatMessage("/xp");
         
-        this.worldChangeInitiatedDelay = false;
         this.waitingForExpMessage = true;
-        this.millisUntilExpMessageSwallowDone = millis + 2000L;
+        this.millisUntilExpMessageSwallowDone = millis + 3000L;
         
         // Reset EXP Status on Watch when attempting to perform an update
         this.expStatusOnWatch = new ExpCacheState();
@@ -731,7 +751,8 @@ public abstract class AbstractExpHud
     }
     void finishWatchingExpStatus()
     {
-        if (!Preferences.ignoreEmptyExp || !(this.expStatusOnWatch.isEmpty() || this.expStatusOnWatch.isInitialExp()))
+        if (!Preferences.ignoreEmptyExp || !(this.expStatusOnWatch == null ||
+                this.expStatusOnWatch.isEmpty() || this.expStatusOnWatch.isInitialExp()))
         {
             this.expStatus = this.expStatusOnWatch;
             this.expStatusOnWatch = null;
@@ -922,6 +943,202 @@ public abstract class AbstractExpHud
     
     
     
+    
+    
+    
+    
+    //
+    // What is a cached message?
+    //
+    /**
+     * Send all of the cached messages this HUD has stored during or after the EXP wait. It
+     * then removes all of the cached entries one by one and all if there were leftovers.
+     *
+     * <p> Ensure you first set {@link #waitingForExpMessage} to {@code false} (not needed to
+     * do so anymore) as this will end up calling {@code onChatPrintEvent} (if that's applicable
+     * to your mod loader) x amount of times depending on how many cached entries it has to deal
+     * with.
+     */
+    void spewOutCachedMessages()
+    {
+        final boolean wasWaitingForExpMsg = this.waitingForExpMessage;
+        this.waitingForExpMessage = false;
+        
+        try
+        {
+            Iterator<?> cmtp = this.cachedMessagesToPrint.iterator();
+            
+            while (cmtp.hasNext())
+            {
+                this.printMessage(cmtp.next());
+                cmtp.remove();
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        this.clearOutCachedMessages();
+        
+        this.waitingForExpMessage = wasWaitingForExpMsg;
+    }
+    void clearOutCachedMessages()
+    {
+        if (!this.cachedMessagesToPrint.isEmpty())
+            this.cachedMessagesToPrint.clear();
+    }
+    
+    
+    
+    
+    
+    
+    //
+    // Updating Previous EXPs
+    //
+    void updatePrevExp_AccountAllLines(boolean successful)
+    {
+        if (Preferences.accuracy == AccuracyMode.ACCOUNT_FOR_ALL_LINES && successful)
+            this.updatePrevExpsAndExpLevelCheck();
+    }
+    
+    void updatePrevExp_OnlyOnWhatMatters(boolean expInfoLine)
+    {
+        if (Preferences.accuracy == AccuracyMode.ONLY_ON_WHAT_MATTERS && expInfoLine)
+        {
+            this.finishWatchingExpStatus();
+            this.updatePrevExpsAndExpLevelCheck();
+        }
+    }
+    
+    void updatePrevExpsAndExpLevelCheck()
+    {
+        final ExpCacheState expStatus = this.expStatus.copy();
+        
+        if (this.prevExpStatuses.isEmpty())
+        {
+            this.prevExpStatuses.add(expStatus);
+            this.updateTotalExpAccumulatedAlongWithLevels();
+        }
+        else
+        {
+            // Compare against the first item in the entry and make a guess
+            final ExpCacheState expStatusPrev = this.prevExpStatuses.peekFirst();
+            
+            final boolean shouldUpdateExps = Preferences.expTotalsCacheMethodCheck ==
+                    ExpTotalsCacheMethodCheck.ONLY_ON_EXP_UPDATE_END;
+            
+            // First check for level differences between the previous and current
+            // Note: checking for Next Level has no point as that also gets updated
+            // if the user had their current level changed
+            if (expStatus.currentLevel != expStatusPrev.currentLevel)
+            {
+                int levelDiff = expStatus.currentLevel - expStatusPrev.currentLevel;
+                
+                if (levelDiff > 0)
+                {
+                    // Add +1 (should be) to the total levels in both set time and session
+                    this.totalLevelsGainedInSetTime += levelDiff;
+                    this.totalLevelsGainedInSession += levelDiff;
+                    
+                    if (shouldUpdateExps)
+                    {
+                        // Use the previous EXP info to know the total EXP obtained before
+                        // the level update
+                        long expDiff = expStatusPrev.expUntilNextLevel - expStatusPrev.currentExp;
+                        // Then use the current EXP info and add it as part of the total
+                        expDiff += expStatus.currentExp;
+                        
+                        // Check if the total of levels is more than 1.
+                        if (levelDiff > 1)
+                        {
+                            // Skip the user's previous level as that was already done when
+                            // initializing expDiff. The current level is also skipped since it
+                            // doesn't count; only the current exp which was already done after
+                            // expDiff.
+                            
+                            // Add on the exp differentials; not much to worry as we've already
+                            // checked that the levels are more than 1. If it's a level skip,
+                            // it would already be targeting to the skipped level and return only
+                            // its EXP Until Next Level.
+                            expDiff += ExpStatics.accumulateExpFromLevelRanges
+                                    (expStatusPrev.currentLevel + 1, expStatus.currentLevel - 1);
+                        }
+                        // Add the total differentials to the total EXPs in session and in set time.
+                        this.totalExpGainedInSetTime += expDiff;
+                        this.totalExpGainedInSession += expDiff;
+                    }
+                }
+                
+                this.updateTotalExpAccumulatedAlongWithLevels();
+            }
+            // Assuming that the current EXP was changed to a higher one and ensure only to update
+            // if shouldUpdateExps is set to true!
+            // Note: The user can only get lower EXP if the server didn't load their user
+            // data yet, or if they have had a level change; which the latter should have
+            // already executed under currentLevel being different. This is more of a fail-safe
+            // unless Mineplex pulls a confusion.
+            else if (shouldUpdateExps && expStatus.currentExp > expStatusPrev.currentExp)
+            {
+                long expObtained = expStatus.currentExp - expStatusPrev.currentExp;
+                this.totalExpGainedInSetTime += expObtained;
+                this.totalExpGainedInSession += expObtained;
+            }
+            
+            if (this.prevExpStatuses.size() + 1 > Preferences.maxPrevExpCaches)
+                this.prevExpStatuses.removeLast();
+            
+            this.prevExpStatuses.addFirst(expStatus);
+        }
+    }
+    
+    protected void updateTotalExpAccumulatedAlongWithLevels()
+    {
+        this.totalExpAccumulatedFromLevelCache =
+                ExpStatics.accumulateExpFromCurrentLevel(this.expStatus.currentLevel);
+        this.updateTotalExpAccumulated();
+    }
+    
+    protected void updateTotalExpAccumulated()
+    {
+        this.totalExpAccumulated = this.totalExpAccumulatedFromLevelCache + this.expStatus.currentExp;
+        this.percentageUntilLevelOneHundred = (float)((double)this.totalExpAccumulated /
+                (double)ExpStatics.LEVEL_100_TOTAL_EXP);
+    }
+    
+    
+    
+    
+    
+    
+    
+    //
+    // Self-Checks & Getters
+    //
+    protected boolean shouldUpdateExps() {
+        return Preferences.expUpdateEnabled && (Preferences.expUpdatesBesidesMineplex || this.isOnMineplexServer);
+    }
+    public boolean isWaitingForExpMessage() {
+        return this.waitingForExpMessage;
+    }
+    public long getActiveMillisUntilNextExpUpdate() {
+        return this.activeMillisUntilNextExpUpdate;
+    }
+    public long getMillisUntilExpMessageSwallowDone() {
+        return this.millisUntilExpMessageSwallowDone;
+    }
+    public boolean isOnServer() {
+        return this.isOnMineplexServer;
+    }
+    
+    
+    
+    
+    
+    
+    //
+    // Static Rendering
+    //
     protected void renderOnlyTextS(RenderContext ctx, float tickDelta, String s, float alpha, float x, float y, int textColor)
     {
         if (s == null || alpha <= 0.0f)
@@ -1099,168 +1316,6 @@ public abstract class AbstractExpHud
             y - topEdgeAdd,
             x + sWidth  + rightEdgeAdd,
             y + sHeight + bottomEdgeAdd
-            
-            // x - xAdd, y - yAdd,
-            // x + sWidth  + xAdd,
-            // y + sHeight + (yAdd - 1.0f)
         };
-    }
-    
-    
-    
-    
-    
-    
-    /**
-     * Send all of the cached messages this HUD has stored during or after the EXP wait. It
-     * then removes all of the cached entries one by one and all if there were leftovers.
-     *
-     * <p> Ensure you first set {@link #waitingForExpMessage} to {@code false} (not needed to
-     * do so anymore) as this will end up calling {@code onChatPrintEvent} (if that's applicable
-     * to your mod loader) x amount of times depending on how many cached entries it has to deal
-     * with.
-     */
-    void spewOutCachedMessages()
-    {
-        final boolean wasWaitingForExpMsg = this.waitingForExpMessage;
-        this.waitingForExpMessage = false;
-        
-        try
-        {
-            Iterator<?> cmtp = this.cachedMessagesToPrint.iterator();
-            
-            while (cmtp.hasNext())
-            {
-                this.printMessage(cmtp.next());
-                cmtp.remove();
-            }
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        this.clearOutCachedMessages();
-        
-        this.waitingForExpMessage = wasWaitingForExpMsg;
-    }
-    void clearOutCachedMessages()
-    {
-        if (!this.cachedMessagesToPrint.isEmpty())
-            this.cachedMessagesToPrint.clear();
-    }
-    
-    
-    
-    
-    
-    
-    void updatePrevExp_AccountAllLines(boolean successful)
-    {
-        if (Preferences.accuracy == AccuracyMode.ACCOUNT_FOR_ALL_LINES && successful)
-            this.updatePrevExpsAndExpLevelCheck();
-    }
-    
-    void updatePrevExp_OnlyOnWhatMatters(boolean expInfoLine)
-    {
-        if (Preferences.accuracy == AccuracyMode.ONLY_ON_WHAT_MATTERS && expInfoLine)
-        {
-            this.finishWatchingExpStatus();
-            this.updatePrevExpsAndExpLevelCheck();
-        }
-    }
-    
-    void updatePrevExpsAndExpLevelCheck()
-    {
-        final ExpCacheState expStatus = this.expStatus.copy();
-        
-        if (this.prevExpStatuses.isEmpty())
-        {
-            this.prevExpStatuses.add(expStatus);
-            this.updateTotalExpAccumulatedAlongWithLevels();
-        }
-        else
-        {
-            // Compare against the first item in the entry and make a guess
-            final ExpCacheState expStatusPrev = this.prevExpStatuses.peekFirst();
-            
-            final boolean shouldUpdateExps = Preferences.expTotalsCacheMethodCheck ==
-                    ExpTotalsCacheMethodCheck.ONLY_ON_EXP_UPDATE_END;
-            
-            // First check for level differences between the previous and current
-            // Note: checking for Next Level has no point as that also gets updated
-            // if the user had their current level changed
-            if (expStatus.currentLevel != expStatusPrev.currentLevel)
-            {
-                int levelDiff = expStatus.currentLevel - expStatusPrev.currentLevel;
-                
-                if (levelDiff > 0)
-                {
-                    // Add +1 (should be) to the total levels in both set time and session
-                    this.totalLevelsGainedInSetTime += levelDiff;
-                    this.totalLevelsGainedInSession += levelDiff;
-                    
-                    if (shouldUpdateExps)
-                    {
-                        // Use the previous EXP info to know the total EXP obtained before
-                        // the level update
-                        long expDiff = expStatusPrev.expUntilNextLevel - expStatusPrev.currentExp;
-                        // Then use the current EXP info and add it as part of the total
-                        expDiff += expStatus.currentExp;
-                        
-                        // Check if the total of levels is more than 1.
-                        if (levelDiff > 1)
-                        {
-                            // Skip the user's previous level as that was already done when
-                            // initializing expDiff. The current level is also skipped since it
-                            // doesn't count; only the current exp which was already done after
-                            // expDiff.
-                            
-                            // Add on the exp differentials; not much to worry as we've already
-                            // checked that the levels are more than 1. If it's a level skip,
-                            // it would already be targeting to the skipped level and return only
-                            // its EXP Until Next Level.
-                            expDiff += ExpStatics.accumulateExpFromLevelRanges
-                                    (expStatusPrev.currentLevel + 1, expStatus.currentLevel - 1);
-                        }
-                        // Add the total differentials to the total EXPs in session and in set time.
-                        this.totalExpGainedInSetTime += expDiff;
-                        this.totalExpGainedInSession += expDiff;
-                    }
-                }
-                
-                this.updateTotalExpAccumulatedAlongWithLevels();
-            }
-            // Assuming that the current EXP was changed to a higher one and ensure only to update
-            // if shouldUpdateExps is set to true!
-            // Note: The user can only get lower EXP if the server didn't load their user
-            // data yet, or if they have had a level change; which the latter should have
-            // already executed under currentLevel being different. This is more of a fail-safe
-            // unless Mineplex pulls a confusion.
-            else if (shouldUpdateExps && expStatus.currentExp > expStatusPrev.currentExp)
-            {
-                long expObtained = expStatus.currentExp - expStatusPrev.currentExp;
-                this.totalExpGainedInSetTime += expObtained;
-                this.totalExpGainedInSession += expObtained;
-            }
-            
-            if (this.prevExpStatuses.size() + 1 > Preferences.maxPrevExpCaches)
-                this.prevExpStatuses.removeLast();
-            
-            this.prevExpStatuses.addFirst(expStatus);
-        }
-    }
-    
-    protected void updateTotalExpAccumulatedAlongWithLevels()
-    {
-        this.totalExpAccumulatedFromLevelCache =
-                ExpStatics.accumulateExpFromCurrentLevel(this.expStatus.currentLevel);
-        this.updateTotalExpAccumulated();
-    }
-    
-    protected void updateTotalExpAccumulated()
-    {
-        this.totalExpAccumulated = this.totalExpAccumulatedFromLevelCache + this.expStatus.currentExp;
-        this.percentageUntilLevelOneHundred = (float)((double)this.totalExpAccumulated /
-                (double)ExpStatics.LEVEL_100_TOTAL_EXP);
     }
 }
