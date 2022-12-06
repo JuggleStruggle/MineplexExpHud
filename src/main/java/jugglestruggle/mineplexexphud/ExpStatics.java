@@ -80,6 +80,7 @@ public final class ExpStatics
             Pattern.compile("§r§7  \\+§r§e(\\d+) §r§7Experience§r"),
             Pattern.compile("§r§9Carl> §r§7Rewarded §r§e(\\d+) Experience§r"),
             Pattern.compile("§r - §r§e(\\d+) XP§r"),
+            Pattern.compile("§r§9Advent Calendar> §r§e(\\d+) XP§r"),
         };
         
         // Source: https://www.mineplex.com/threads/xp-until-next-level.3076/
